@@ -8,6 +8,8 @@ Start a `Python Command Prompt`:
 
 ![](media/Command.png)
 
+Execute the following commands:
+
 ```commandline
 conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
