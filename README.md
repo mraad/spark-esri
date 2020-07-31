@@ -4,6 +4,10 @@ Project to demonstrate the usage of Apache Spark within a Jupyter notebook withi
 
 ### Create a new Pro Conda Environment.
 
+Start a `Python Command Prompt`:
+
+![](media/Command.png)
+
 ```commandline
 conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
