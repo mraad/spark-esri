@@ -26,7 +26,7 @@ cd spark-ersi
 python setup.py install
 ```
 
-Note that the `java_gateway.py` code borrowed from Spark 3.0. Hoping that this will not be needed when we will switch to 3.0.
+Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hoping that this will not be needed when we will switch to 3.0.
 
 ### Notebooks
 
