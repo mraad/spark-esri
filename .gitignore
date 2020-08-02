@@ -1,3 +1,8 @@
 .idea/
+.idea/ZeppelinRemoteNotebooks
 .idea/sbt.xml
+.ipynb_checkpoints
+build
+dist
+python/spark_esri.egg-info
 *.iml

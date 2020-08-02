@@ -21,13 +21,28 @@ from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
 from .java_gateway import launch_gateway
 
-os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
-os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
-os.environ["SPARK_HOME"] = spark_home
-os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
+__spark_stated = False
 
 
 def spark_start(config: Dict = {}) -> SparkSession:
+    global __spark_stated
+    #
+    os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
+    os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
+    os.environ["SPARK_HOME"] = spark_home
+    # Get the active conda env.
+    if os.getenv('LOCALAPPDATA'):
+        pro_env_txt = os.path.join(os.getenv('LOCALAPPDATA'), 'ESRI', 'conda', 'envs', 'proenv.txt')
+        if os.path.exists(pro_env_txt):
+            with open(pro_env_txt, "r") as fp:
+                python_path = fp.read().strip()
+                os.environ["PYSPARK_PYTHON"] = os.path.join(python_path, "python.exe")
+        else:
+            os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3",
+                                                        "python.exe")
+    else:
+        os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
+    #
     # these need to be reset on every run or pyspark will think the Java gateway is still up and running
     os.environ.unsetenv("PYSPARK_GATEWAY_PORT")
     os.environ.unsetenv("PYSPARK_GATEWAY_SECRET")
@@ -52,6 +67,7 @@ def spark_start(config: Dict = {}) -> SparkSession:
     conf.set("spark.sql.catalogImplementation", "in-memory")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.set("spark.jars", spark_jars)
+    # Add/Update spark configurations.
     for k, v in config.items():
         if k == "spark.jars":
             v = spark_jars + "," + v
@@ -63,18 +79,22 @@ def spark_start(config: Dict = {}) -> SparkSession:
     spark = SparkSession(sc)
     # Kick start spark engine.
     spark.sql("select 1").collect()
+    __spark_stated = True
     return spark
 
 
 def spark_stop():
-    spark = SparkSession.builder.getOrCreate()
-    gateway = spark._sc._gateway
-    spark.stop()
-    gateway.shutdown()
-    gateway.proc.stdin.close()
+    global __spark_stated
+    if __spark_stated:
+        spark = SparkSession.builder.getOrCreate()
+        gateway = spark._sc._gateway
+        spark.stop()
+        gateway.shutdown()
+        gateway.proc.stdin.close()
 
-    # ensure that process and all children are killed
-    subprocess.Popen(["cmd", "/c", "taskkill", "/f", "/t", "/pid", str(gateway.proc.pid)],
-                     shell=True,
-                     stdout=subprocess.DEVNULL,
-                     stderr=subprocess.DEVNULL)
+        # ensure that process and all children are killed
+        subprocess.Popen(["cmd", "/c", "taskkill", "/f", "/t", "/pid", str(gateway.proc.pid)],
+                         shell=True,
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+        __spark_stated = False
