@@ -2,6 +2,7 @@
 .idea/ZeppelinRemoteNotebooks
 .idea/sbt.xml
 .ipynb_checkpoints
+media/Thumbs.db
 build
 dist
 python/spark_esri.egg-info

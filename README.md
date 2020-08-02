@@ -42,6 +42,14 @@ Please note the usage of the [range slider](https://pro.arcgis.com/en/pro-app/he
 
 ![](media/Micropath2.png)
 
+### [Virtual Gate Crossings](virtual_gates.ipynb) Notebook
+
+![](media/Gates1.png)
+
+The following is the resulting crossing points and gates statistics.
+
+![](media/Gates2.png)
+
 ## References
 
 - https://www.esri.com/arcgis-blog/products/arcgis-pro/health/use-proximity-tracing-to-identify-possible-contact-events/
