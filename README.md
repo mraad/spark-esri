@@ -38,7 +38,8 @@ pip install -U databricks-connect==6.6 pyarrow autovizwidget
 proswap dbconnect
 
 databricks-connect configure
-set SPARK_HOME=c:\users\mraad\appdata\local\esri\conda\envs\dbconnect\lib\site-packages\pyspark
+set DATABRICKS_TOKEN=xxx-xxx-xxx-xxx
+set SPARK_HOME=%LOCALAPPDATA%\esri\conda\envs\dbconnect\lib\site-packages\pyspark
 databricks-connect test
 ```
 
