@@ -29,7 +29,9 @@ def spark_start(config: Dict = {}) -> SparkSession:
     #
     os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
     os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
-    os.environ["SPARK_HOME"] = spark_home
+    # Set to local spark in Pro if not already defined.
+    if "SPARK_HOME" not in os.environ:
+        os.environ["SPARK_HOME"] = spark_home
     # Get the active conda env.
     if os.getenv('LOCALAPPDATA'):
         pro_env_txt = os.path.join(os.getenv('LOCALAPPDATA'), 'ESRI', 'conda', 'envs', 'proenv.txt')
@@ -67,7 +69,7 @@ def spark_start(config: Dict = {}) -> SparkSession:
     conf.set("spark.sql.catalogImplementation", "in-memory")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.set("spark.jars", spark_jars)
-    # Add/Update spark configurations.
+    # Add/Update user defined spark configurations.
     for k, v in config.items():
         if k == "spark.jars":
             v = spark_jars + "," + v
@@ -77,7 +79,7 @@ def spark_start(config: Dict = {}) -> SparkSession:
     gateway = launch_gateway(popen_kwargs=popen_kwargs, conf=conf)
     sc = SparkContext(gateway=gateway)
     spark = SparkSession(sc)
-    # Kick start spark engine.
+    # Kick start the spark engine.
     spark.sql("select 1").collect()
     __spark_stated = True
     return spark
