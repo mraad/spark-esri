@@ -31,10 +31,17 @@ Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hop
 ### Create a [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect.html)
 
 ```
+git clone https://github.com/jupyter-incubator/sparkmagic.git
+cd sparkmagic\autovizwidget
+python setup.py install
+```
+
+```
 conda remove --yes --all --name dbconnect
 conda create --yes --name dbconnect --clone arcgispro-py3
 activate dbconnect
 pip install -U databricks-connect==6.6 pyarrow autovizwidget
+conda install -c plotly plotly
 proswap dbconnect
 
 databricks-connect configure
