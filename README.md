@@ -34,7 +34,7 @@ Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hop
 conda remove --yes --all --name dbconnect
 conda create --yes --name dbconnect --clone arcgispro-py3
 activate dbconnect
-pip install -U databricks-connect==6.6
+pip install -U databricks-connect==6.6 pyarrow autovizwidget
 proswap dbconnect
 
 databricks-connect configure
