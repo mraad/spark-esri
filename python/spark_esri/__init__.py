@@ -19,14 +19,12 @@ sys.path.insert(0, os.path.join(spark_home, "python", "lib", "py4j-0.10.7-src.zi
 
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
-from .java_gateway import launch_gateway
+from spark.java_gateway import launch_gateway
 
-__spark_stated = False
+SparkContext._gateway = None
 
 
 def spark_start(config: Dict = {}) -> SparkSession:
-    global __spark_stated
-    #
     os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
     os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
     # Set to local spark in Pro if not already defined.
@@ -76,18 +74,16 @@ def spark_start(config: Dict = {}) -> SparkSession:
         conf.set(k, v)
 
     # we have to manage the py4j gateway ourselves so that we can control the JVM process
-    gateway = launch_gateway(popen_kwargs=popen_kwargs, conf=conf)
+    gateway = launch_gateway(conf=conf, popen_kwargs=popen_kwargs)
     sc = SparkContext(gateway=gateway)
     spark = SparkSession(sc)
     # Kick start the spark engine.
     spark.sql("select 1").collect()
-    __spark_stated = True
     return spark
 
 
 def spark_stop():
-    global __spark_stated
-    if __spark_stated:
+    if SparkContext._gateway:
         spark = SparkSession.builder.getOrCreate()
         gateway = spark._sc._gateway
         spark.stop()
@@ -99,4 +95,4 @@ def spark_stop():
                          shell=True,
                          stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL)
-        __spark_stated = False
+        SparkContext._gateway = None

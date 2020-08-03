@@ -38,7 +38,7 @@ pip install -U databricks-connect==6.6
 proswap dbconnect
 
 databricks-connect configure
-
+set SPARK_HOME=c:\users\mraad\appdata\local\esri\conda\envs\dbconnect\lib\site-packages\pyspark
 databricks-connect test
 ```
 
