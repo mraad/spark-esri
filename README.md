@@ -54,7 +54,15 @@ The following is the resulting crossing points and gates statistics.
 
 ![](media/Cluster.png)
 
+## TODO
+
+- Unify spark_esri and spark_dbconnect python modules.
+
 ## References
 
+- https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+- https://www.kite.com/python/answers/how-to-check-if-two-line-segments-intersect-in-python
+- https://pandas.pydata.org/pandas-docs/stable/development/extending.html
+- https://pandas.pydata.org/pandas-docs/stable/user_guide/style.html
 - https://www.esri.com/arcgis-blog/products/arcgis-pro/health/use-proximity-tracing-to-identify-possible-contact-events/
 - https://marinecadastre.gov/ais/

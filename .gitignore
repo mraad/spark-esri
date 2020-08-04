@@ -6,5 +6,6 @@ media/Thumbs.db
 tools/*.xml
 build
 dist
+spark-warehouse
 python/spark_esri.egg-info
 *.iml
