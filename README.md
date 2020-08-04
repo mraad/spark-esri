@@ -28,27 +28,6 @@ python setup.py install
 
 Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hoping that this will not be needed when we will switch to 3.0.
 
-### Create a [Databricks Connect](https://docs.databricks.com/dev-tools/databricks-connect.html)
-
-```
-conda remove --yes --all --name dbconnect
-conda create --yes --name dbconnect --clone arcgispro-py3
-activate dbconnect
-pip install -U databricks-connect==6.6 pyarrow
-proswap dbconnect
-
-databricks-connect configure
-set DATABRICKS_TOKEN=xxx-xxx-xxx-xxx
-set SPARK_HOME=%LOCALAPPDATA%\esri\conda\envs\dbconnect\lib\site-packages\pyspark
-databricks-connect test
-```
-
-```
-git clone https://github.com/jupyter-incubator/sparkmagic.git
-cd sparkmagic\autovizwidget
-python setup.py install
-```
-
 ### [Spatial Binning](spark_esri.ipynb) Notebook
 
 ![](media/Notebook.png)
@@ -70,6 +49,10 @@ Please note the usage of the [range slider](https://pro.arcgis.com/en/pro-app/he
 The following is the resulting crossing points and gates statistics.
 
 ![](media/Gates2.png)
+
+### [Remote Execution on MS Azure Databricks](spark_dbconnect.ipynb) Notebook
+
+![](media/Cluster.png)
 
 ## References
 
