@@ -66,3 +66,4 @@ The following is the resulting crossing points and gates statistics.
 - https://pandas.pydata.org/pandas-docs/stable/user_guide/style.html
 - https://www.esri.com/arcgis-blog/products/arcgis-pro/health/use-proximity-tracing-to-identify-possible-contact-events/
 - https://marinecadastre.gov/ais/
+- https://www.kaggle.com/c/nyc-taxi-trip-duration/data
