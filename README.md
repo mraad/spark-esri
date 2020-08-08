@@ -13,6 +13,7 @@ Execute the following commands:
 ```commandline
 conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
+conda install --yes -c conda-forge jupyterlab
 activate spark_esri
 pip install pyarrow
 proswap spark_esri
@@ -66,4 +67,5 @@ The following is the resulting crossing points and gates statistics.
 - https://pandas.pydata.org/pandas-docs/stable/user_guide/style.html
 - https://www.esri.com/arcgis-blog/products/arcgis-pro/health/use-proximity-tracing-to-identify-possible-contact-events/
 - https://marinecadastre.gov/ais/
+- https://www.movable-type.co.uk/scripts/latlong.html
 - https://www.kaggle.com/c/nyc-taxi-trip-duration/data
