@@ -13,17 +13,17 @@ Execute the following commands:
 ```commandline
 conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
-conda install --yes -c conda-forge jupyterlab
 activate spark_esri
-pip install pyarrow
 proswap spark_esri
+conda install --yes -c esri -c conda-forge jupyterlab=2.2 numba pandas=1.1 scikit-optimize
+pip install pyarrow==0.8.0
 ```
 
 Install the Esri Spark module.
 
 ```commandline
 git clone https://github.com/mraad/spark-esri.git
-cd spark-ersi
+cd spark-esri
 python setup.py install
 ```
 
@@ -55,6 +55,10 @@ The following is the resulting crossing points and gates statistics.
 
 ![](media/Cluster.png)
 
+### [Predict Taxi Trip Durations](taxi_trips_duration_train.ipynb), [Map Taxi Trip Duration Errors](taxi_trips_duration_error.ipynb) Notebooks
+
+![](media/TripErrors.png)
+
 ## TODO
 
 - Unify spark_esri and spark_dbconnect python modules.
@@ -69,3 +73,7 @@ The following is the resulting crossing points and gates statistics.
 - https://marinecadastre.gov/ais/
 - https://www.movable-type.co.uk/scripts/latlong.html
 - https://www.kaggle.com/c/nyc-taxi-trip-duration/data
+- https://developers.google.com/maps/documentation/utilities/polylinealgorithm
+- https://nvidia.github.io/spark-rapids
+- https://github.com/nvidia/spark-rapids
+- https://github.com/quantopian/qgrid
