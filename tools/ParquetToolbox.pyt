@@ -251,7 +251,6 @@ class ImportTool(object):
         with open(parts[0], 'rb') as f:
             table = pq.read_table(f)
             schema = table.schema
-            arcpy.AddMessage(str(schema))
             for field in schema:
                 f_name = field.name
                 f_type = str(field.type)
@@ -273,10 +272,10 @@ class ImportTool(object):
             for part in parts:
                 if arcpy.env.isCancelled:
                     break
-                arcpy.AddMessage(part)
+                # arcpy.AddMessage(part)
                 with open(part, 'rb') as f:
                     table = pq.read_table(f)
-                    arcpy.AddMessage(f"Num rows = {table.num_rows}")
+                    arcpy.AddMessage(f"{part} rows = {table.num_rows}")
                     pydict = table.to_pydict()
                     for i in range(table.num_rows):
                         row = [pydict[c][i] for c in pq_fields]
