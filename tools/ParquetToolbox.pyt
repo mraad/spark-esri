@@ -251,9 +251,10 @@ class ImportTool(object):
         with open(parts[0], 'rb') as f:
             table = pq.read_table(f)
             schema = table.schema
+            arcpy.AddMessage(str(schema))
             for field in schema:
                 f_name = field.name
-                f_type = field.type
+                f_type = str(field.type)
                 arcpy.AddMessage(f"field name={f_name} type={f_type}")
                 if f_name not in [p_x, p_y, p_geom]:
                     a_type = {
