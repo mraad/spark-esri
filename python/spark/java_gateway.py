@@ -86,6 +86,7 @@ def launch_gateway(conf=None, popen_kwargs=None):
                 # Don't send ctrl-c / SIGINT to the Java gateway:
                 def preexec_func():
                     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
                 popen_kwargs['preexec_fn'] = preexec_func
                 proc = Popen(command, **popen_kwargs)
             else:
@@ -118,7 +119,8 @@ def launch_gateway(conf=None, popen_kwargs=None):
             # JVMs. Instead, we use "taskkill" with the tree-kill option "/t" to terminate all
             # child processes in the tree (http://technet.microsoft.com/en-us/library/bb491009.aspx)
             def killChild():
-                Popen(["cmd", "/c", "taskkill", "/f", "/t", "/pid", str(proc.pid)])
+                Popen(["cmd", "/c", "taskkill", "/f", "/t", "/pid", str(proc.pid)], shell=True)
+
             atexit.register(killChild)
 
     # Connect to the gateway (or client server to pin the thread between JVM and Python)
