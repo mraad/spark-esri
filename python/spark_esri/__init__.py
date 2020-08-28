@@ -53,8 +53,10 @@ def spark_start(config: Dict = {}) -> SparkSession:
         'shell': True  # keeps the command-line window from showing
     }
 
-    spark_jars = [os.path.join(pro_lib_dir, "spark-desktop-engine.jar"),
-                  os.path.join(pro_lib_dir, "arcobjects.jar")]
+    spark_jars = [
+        # os.path.join(pro_lib_dir, "spark-desktop-engine.jar"),
+        # os.path.join(pro_lib_dir, "arcobjects.jar")
+    ]
     spark_jars = ",".join(spark_jars)
 
     conf = SparkConf()
