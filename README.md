@@ -18,10 +18,10 @@ proswap spark_esri
 conda install --yes -c esri -c conda-forge jupyterlab=2.2 numba pandas=1.1 scikit-optimize tqdm
 
 # to use .toPandas()
-pip install pyarrow==1.0.0
+pip install pyarrow==1.0
 
 # to use @pandas_udf
-pip install pyarrow==0.8.0
+pip install pyarrow==0.8
 ```
 
 Install the Esri Spark module.

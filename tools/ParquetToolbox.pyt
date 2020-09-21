@@ -259,6 +259,7 @@ class ImportTool(object):
                     a_type = {
                         'int32': 'INTEGER',
                         'int64': 'LONG',
+                        'float': 'DOUBLE',
                         'double': 'DOUBLE'
                     }.get(f_type, 'TEXT')
                     arcpy.management.AddField(fc, f_name, a_type, field_length=256)
