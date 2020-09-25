@@ -3,6 +3,8 @@ from typing import List, Tuple, Iterable
 import os
 import arcpy
 
+from gridhex import Layout, Hex
+
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import Row, IntegerType, LongType, FloatType, DoubleType, DecimalType
 from pyspark.sql.types import DateType, TimestampType, StringType
@@ -171,3 +173,26 @@ def insert_df_xy(
     fields = _df_to_fields(df, 2)
     rows = df.collect()
     insert_rows_xy(rows, name, fields, ws, spatial_reference)
+
+
+def insert_df_hex(
+        df: DataFrame,
+        name: str,
+        size: float,
+        ws: str = "memory") -> None:
+    """Create ephemeral polygon feature class from given dataframe.
+
+    Note - It is assume that the first field is the hex nume value.
+
+    :param df: A dataframe.
+    :param name: The name of the feature class.
+    :param size: The hex size in meters.
+    :param ws: The feature class workspace.
+    """
+    layout = Layout(size)
+    fields = _df_to_fields(df, 1)
+    rows = df.collect()
+    with insert_cursor(name, fields, ws=ws, shape_format="") as cursor:
+        for nume, *tail in rows:
+            coords = Hex.from_nume(nume).to_coords(layout)
+            cursor.insertRow((coords, tail))
