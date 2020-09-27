@@ -195,4 +195,4 @@ def insert_df_hex(
     with insert_cursor(name, fields, ws=ws, shape_format="") as cursor:
         for nume, *tail in rows:
             coords = Hex.from_nume(nume).to_coords(layout)
-            cursor.insertRow((coords, tail))
+            cursor.insertRow((coords, *tail))
