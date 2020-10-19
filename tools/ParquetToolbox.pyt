@@ -1,4 +1,5 @@
 import os
+import re
 from pathlib import Path
 
 import arcpy
@@ -249,22 +250,27 @@ class ImportTool(object):
             arcpy.management.CreateTable(ws, p_name)
 
         with open(parts[0], 'rb') as f:
+            prog = re.compile(r"""^\d""")
             table = pq.read_table(f)
             schema = table.schema
             for field in schema:
-                f_name = field.name
+                p_name = field.name
+                if prog.match(p_name):
+                    a_name = "F" + p_name
+                else:
+                    a_name = p_name
                 f_type = str(field.type)
-                arcpy.AddMessage(f"field name={f_name} type={f_type}")
-                if f_name not in [p_x, p_y, p_geom]:
+                arcpy.AddMessage(f"field name={p_name} type={f_type}")
+                if p_name not in [p_x, p_y, p_geom]:
                     a_type = {
                         'int32': 'INTEGER',
                         'int64': 'LONG',
                         'float': 'DOUBLE',
                         'double': 'DOUBLE'
                     }.get(f_type, 'TEXT')
-                    arcpy.management.AddField(fc, f_name, a_type, field_length=256)
-                    ap_fields.append(f_name)
-                    pq_fields.append(f_name)
+                    arcpy.management.AddField(fc, a_name, a_type, field_length=256)
+                    ap_fields.append(a_name)
+                    pq_fields.append(p_name)
 
         arcpy.env.autoCancelling = False
         with arcpy.da.InsertCursor(fc, ap_fields) as cursor:
