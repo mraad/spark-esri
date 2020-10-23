@@ -47,12 +47,6 @@ def spark_start(config: Dict = {}) -> SparkSession:
     SparkContext._jvm = None
     SparkContext._gateway = None
 
-    popen_kwargs = {
-        'stdout': subprocess.DEVNULL,  # need to redirect stdout & stderr when running in Pro or JVM fails immediately
-        'stderr': subprocess.DEVNULL,
-        'shell': True  # keeps the command-line window from showing
-    }
-
     spark_jars = [
         # os.path.join(pro_lib_dir, "spark-desktop-engine.jar"),
         # os.path.join(pro_lib_dir, "arcobjects.jar")
@@ -74,6 +68,11 @@ def spark_start(config: Dict = {}) -> SparkSession:
         conf.set(k, v)
 
     # we have to manage the py4j gateway ourselves so that we can control the JVM process
+    popen_kwargs = {
+        'stdout': subprocess.DEVNULL,  # need to redirect stdout & stderr when running in Pro or JVM fails immediately
+        'stderr': subprocess.DEVNULL,
+        'shell': True  # keeps the command-line window from showing
+    }
     gateway = launch_gateway(conf=conf, popen_kwargs=popen_kwargs)
     sc = SparkContext(gateway=gateway)
     spark = SparkSession(sc)

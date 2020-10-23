@@ -15,7 +15,7 @@ conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
 activate spark_esri
 proswap spark_esri
-conda install --yes -c esri -c conda-forge jupyterlab=2.2 numba pandas=1.1 scikit-optimize tqdm
+conda install --yes -c esri -c conda-forge jupyterlab=2.2 numba pandas=1.1 scikit-optimize tqdm untangle
 
 # to use .toPandas()
 pip install pyarrow==1.0

@@ -20,6 +20,11 @@ def spark_start(config: Dict = {}) -> SparkSession:
     pro_runtime_dir = os.path.join(pro_home, "Java", "runtime")
     os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
     conf = SparkConf()
+    # conf.set("spark.ui.enabled", False)
+    conf.set("spark.ui.showConsoleProgress", False)
+    conf.set("spark.sql.execution.arrow.enabled", True)
+    # conf.set("spark.sql.catalogImplementation", "in-memory")
+    conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     for k, v in config.items():
         conf.set(k, v)
     #
@@ -29,13 +34,12 @@ def spark_start(config: Dict = {}) -> SparkSession:
     SparkContext._jvm = None
     SparkContext._gateway = None
 
+    # we have to manage the py4j gateway ourselves so that we can control the JVM process
     popen_kwargs = {
         'stdout': subprocess.DEVNULL,  # need to redirect stdout & stderr when running in Pro or JVM fails immediately
         'stderr': subprocess.DEVNULL,
         'shell': True  # keeps the command-line window from showing
     }
-
-    # we have to manage the py4j gateway ourselves so that we can control the JVM process
     gateway = launch_gateway(conf=conf, popen_kwargs=popen_kwargs)
     sc = SparkContext(gateway=gateway)
     spark = SparkSession(sc)
