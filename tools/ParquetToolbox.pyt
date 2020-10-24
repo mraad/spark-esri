@@ -16,11 +16,12 @@ class Toolbox(object):
 
 class ExportTool(object):
     def __init__(self):
-        self.label = "Export To Parquet File"
+        self.label = "Export To Parquet"
         self.description = """
         Export a feature class to a parquet file.
         """
         self.canRunInBackground = True
+        self.tab_view = ""
 
     def getParameterInfo(self):
         tab_view = arcpy.Parameter(
@@ -32,7 +33,7 @@ class ExportTool(object):
 
         pq_name = arcpy.Parameter(
             name="pq_name",
-            displayName="Output Parquet File",
+            displayName="Output Parquet Folder",
             direction="Output",
             datatype="String",
             parameterType="Required")
@@ -51,7 +52,7 @@ class ExportTool(object):
             direction="Input",
             datatype="GPString",
             parameterType="Required")
-        shape_format.value = "WKT"
+        shape_format.value = "WKB"
         shape_format.filter.type = "ValueList"
         shape_format.filter.list = ["WKT", "WKB", "XY"]
 
@@ -107,14 +108,17 @@ class ExportTool(object):
                 for k, v in zip(field_names, row):
                     py_dict[k].append(v)
         table = pa.Table.from_pydict(py_dict)
-        pq.write_table(table, pq_name, version='2.0', flavor='spark')
+        os.makedirs(pq_name, exist_ok=True)
+        pq.write_table(table, os.path.join(pq_name, "part-00000"), version="2.0", flavor="spark")
         arcpy.ResetProgressor()
 
 
 class ImportTool(object):
     def __init__(self):
-        self.label = "Import Parquet Files"
-        self.description = "Import Parquet Files"
+        self.label = "Import From Parquet"
+        self.description = """
+        Import parquet files from a folder typically generated as output of a Spark job.
+        """
         self.canRunInBackground = True
 
     def getParameterInfo(self):
@@ -129,7 +133,7 @@ class ImportTool(object):
             name="in_file",
             displayName="Parquet Folder",
             direction="Input",
-            datatype="GPString",
+            datatype="DEFolder",
             parameterType="Required")
         param_path.value = os.path.join("Z:", os.sep)
 
@@ -207,7 +211,7 @@ class ImportTool(object):
         return
 
     def execute(self, parameters, messages):
-        p_path = parameters[1].value
+        p_path = parameters[1].valueAsText
         p_name = parameters[2].value
         p_x = parameters[3].value
         p_y = parameters[4].value
@@ -216,9 +220,13 @@ class ImportTool(object):
         p_sp_ref = parameters[7].value
 
         p = Path(p_path)
+        if p.is_file():
+            arcpy.AddError(f"{p_path} is not a folder. Make sure all the files in {p_path} start with 'part-'.")
+            return
+
         parts = list(p.glob('part-*'))
         if len(parts) == 0:
-            arcpy.AddError(f"No part files in {p_path}.")
+            arcpy.AddError(f"No files in {p_path} start with 'part-'.")
             return
 
         ws = "memory" if parameters[8].value else arcpy.env.scratchGDB
@@ -251,11 +259,15 @@ class ImportTool(object):
 
         with open(parts[0], 'rb') as f:
             prog = re.compile(r"""^\d""")
+            object_id = 1
             table = pq.read_table(f)
             schema = table.schema
             for field in schema:
                 p_name = field.name
-                if prog.match(p_name):
+                if p_name == "OBJECTID":
+                    a_name = f"OBJECTID_{object_id}"
+                    object_id += 1
+                elif prog.match(p_name):
                     a_name = "F" + p_name
                 else:
                     a_name = p_name
@@ -268,7 +280,7 @@ class ImportTool(object):
                         'float': 'DOUBLE',
                         'double': 'DOUBLE'
                     }.get(f_type, 'TEXT')
-                    arcpy.management.AddField(fc, a_name, a_type, field_length=256)
+                    arcpy.management.AddField(fc, a_name, a_type, field_alias=p_name, field_length=1024)
                     ap_fields.append(a_name)
                     pq_fields.append(p_name)
 
