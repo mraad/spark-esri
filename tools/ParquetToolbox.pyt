@@ -226,7 +226,7 @@ class ImportTool(object):
 
         parts = list(p.glob('part-*'))
         if len(parts) == 0:
-            arcpy.AddError(f"No files in {p_path} start with 'part-'.")
+            arcpy.AddError(f"Cannot find files in {p_path} that start with 'part-'.")
             return
 
         ws = "memory" if parameters[8].value else arcpy.env.scratchGDB
