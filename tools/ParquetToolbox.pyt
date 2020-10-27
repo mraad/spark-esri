@@ -1,10 +1,24 @@
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 import arcpy
-import pyarrow as pa
-import pyarrow.parquet as pq
+
+try:
+    import boto3
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from pyarrow import fs
+    from s3fs import S3FileSystem
+
+    pyarrow_found = True
+    pyarrow_error = None
+except ModuleNotFoundError:
+    pyarrow_found = False
+    pyarrow_error = """
+    Please execute 'pip install -U boto3==1.16.0 pyarrow==2.0.0 s3fs==0.4.2' in the ArcGIS Python Command Prompt. 
+    """
 
 
 class Toolbox(object):
@@ -18,7 +32,9 @@ class ExportTool(object):
     def __init__(self):
         self.label = "Export To Parquet"
         self.description = """
-        Export a feature class to a parquet file.
+        Export a feature class to a parquet folder.
+        Parquet folder can be on local file system on on S3.
+        The files in the folder will be named 'part-00001','part-00002',etc...
         """
         self.canRunInBackground = True
         self.tab_view = ""
@@ -64,7 +80,15 @@ class ExportTool(object):
             parameterType="Required")
         sp_ref.value = arcpy.SpatialReference(4326).exportToString()
 
-        return [tab_view, pq_name, output_shape, shape_format, sp_ref]
+        batch_size = arcpy.Parameter(
+            name="batch_size",
+            displayName="Batch Size",
+            direction="Input",
+            datatype="GPLong",
+            parameterType="Required")
+        batch_size.value = 1_00_000
+
+        return [tab_view, pq_name, output_shape, shape_format, sp_ref, batch_size]
 
     def isLicensed(self):
         return True
@@ -75,9 +99,14 @@ class ExportTool(object):
     def updateMessages(self, parameters):
         return
 
-    def execute(self, parameters, messages):
+    def execute(self, parameters, _):
+        if not pyarrow_found:
+            arcpy.AddError(pyarrow_error)
+            return
+
         tab_view = parameters[0].valueAsText
-        pq_name = parameters[1].valueAsText
+        pq_path = parameters[1].value
+        py_size = parameters[5].value
 
         description = arcpy.Describe(tab_view)
         field_names = [field.name for field in description.fields]
@@ -92,6 +121,47 @@ class ExportTool(object):
                 else:
                     field_names.append(shape_name + "@" + shape_format)
 
+        sections = urlparse(pq_path)
+        is_s3 = sections.scheme == "s3"
+        if is_s3:
+            if "AWS_ACCESS_KEY_ID" not in os.environ or "AWS_SECRET_ACCESS_KEY" not in os.environ:
+                arcpy.AddError("Missing environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
+                return
+            bucket = sections.hostname
+            if bucket is None:
+                arcpy.AddError("Make sure the S3 url is in the format s3://bucket_name/....")
+                return
+            base_path = sections.path[1:]
+            if not base_path.endswith("/"):
+                base_path += "/"
+                pq_path += "/"
+            client_kwargs = {}
+            if "AWS_ENDPOINT_URL" in os.environ:
+                client_kwargs['endpoint_url'] = os.getenv("AWS_ENDPOINT_URL")
+                put_object = False
+            else:
+                put_object = True
+            filesystem = S3FileSystem(anon=False,
+                                      key=os.getenv("AWS_ACCESS_KEY_ID"),
+                                      secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                                      client_kwargs=client_kwargs
+                                      )
+            if filesystem.exists(f"{bucket}/{base_path}"):
+                arcpy.AddError(f"Object {bucket}/{base_path} already exists !")
+                return
+            if put_object:
+                try:
+                    s3 = boto3.client("s3")
+                    s3.put_object(Bucket=bucket, Key=base_path)
+                except Exception as e:
+                    arcpy.AddError(str(e))
+                    return
+        else:
+            os.makedirs(pq_path, exist_ok=True)
+            filesystem = fs.LocalFileSystem()
+
+        pq_part = 0
+        py_nume = 0
         py_dict = {k: [] for k in field_names}
         result = arcpy.management.GetCount(tab_view)
         max_range = int(result.getOutput(0))
@@ -107,9 +177,29 @@ class ExportTool(object):
                         break
                 for k, v in zip(field_names, row):
                     py_dict[k].append(v)
-        table = pa.Table.from_pydict(py_dict)
-        os.makedirs(pq_name, exist_ok=True)
-        pq.write_table(table, os.path.join(pq_name, "part-00000"), version="2.0", flavor="spark")
+                py_nume += 1
+                if py_nume == py_size:
+                    table = pa.Table.from_pydict(py_dict)
+                    part_name = f"part-{pq_part:05d}.parquet"
+                    where = f"{pq_path}{part_name}" if is_s3 else os.path.join(pq_path, part_name)
+                    pq.write_table(table,
+                                   where,
+                                   filesystem=filesystem,
+                                   version="2.0",
+                                   flavor="spark")
+                    pq_part += 1
+                    py_nume = 0
+                    py_dict = {k: [] for k in field_names}
+        if py_nume > 0:
+            table = pa.Table.from_pydict(py_dict)
+            part_name = f"part-{pq_part:05d}.parquet"
+            where = f"{pq_path}{part_name}" if is_s3 else os.path.join(pq_path, part_name)
+            pq.write_table(table,
+                           where,
+                           filesystem=filesystem,
+                           version="2.0",
+                           flavor="spark")
+
         arcpy.ResetProgressor()
 
 
@@ -117,7 +207,9 @@ class ImportTool(object):
     def __init__(self):
         self.label = "Import From Parquet"
         self.description = """
-        Import parquet files from a folder typically generated as output of a Spark job.
+        Import parquet files from a folder typically generated from a Spark job.
+        The folder can be in a local file system or in an S3 file system.
+        The name of the files in the folder HAVE to start with 'part-'
         """
         self.canRunInBackground = True
 
@@ -133,9 +225,9 @@ class ImportTool(object):
             name="in_file",
             displayName="Parquet Folder",
             direction="Input",
-            datatype="DEFolder",
+            datatype=["DEFolder", "String"],
             parameterType="Required")
-        param_path.value = os.path.join("Z:", os.sep)
+        # param_path.value = os.path.join("Z:", os.sep)
 
         param_name = arcpy.Parameter(
             name="in_name",
@@ -210,7 +302,11 @@ class ImportTool(object):
     def updateMessages(self, parameters):
         return
 
-    def execute(self, parameters, messages):
+    def execute(self, parameters, _):
+        if not pyarrow_found:
+            arcpy.AddError(pyarrow_error)
+            return
+
         p_path = parameters[1].valueAsText
         p_name = parameters[2].value
         p_x = parameters[3].value
@@ -219,12 +315,33 @@ class ImportTool(object):
         p_type = parameters[6].value
         p_sp_ref = parameters[7].value
 
-        p = Path(p_path)
-        if p.is_file():
-            arcpy.AddError(f"{p_path} is not a folder. Make sure all the files in {p_path} start with 'part-'.")
-            return
+        sections = urlparse(p_path)
+        base_path = sections.path[1:]
+        if sections.scheme == "s3":
+            if "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
+                bucket = sections.hostname
+                client_kwargs = {}
+                if "AWS_ENDPOINT_URL" in os.environ:
+                    endpoint_url = os.getenv("AWS_ENDPOINT_URL")
+                    client_kwargs['endpoint_url'] = endpoint_url
+                    arcpy.AddWarning(f"Using endpoint_url:{endpoint_url}")
+                filesystem = S3FileSystem(anon=False,
+                                          key=os.getenv("AWS_ACCESS_KEY_ID"),
+                                          secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                                          client_kwargs=client_kwargs
+                                          )
+                parts = filesystem.glob(f"{bucket}/{base_path}/part-*")
+            else:
+                arcpy.AddError("Missing environment variables 'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY'.")
+                return
+        else:
+            filesystem = fs.LocalFileSystem()
+            p = Path(p_path)
+            if p.is_file():
+                arcpy.AddError(f"{p_path} is not a folder. Make sure all the files in {p_path} start with 'part-'.")
+                return
+            parts = list(p.glob('part-*'))
 
-        parts = list(p.glob('part-*'))
         if len(parts) == 0:
             arcpy.AddError(f"Cannot find files in {p_path} that start with 'part-'.")
             return
@@ -257,63 +374,50 @@ class ImportTool(object):
         else:
             arcpy.management.CreateTable(ws, p_name)
 
-        with open(parts[0], 'rb') as f:
-            prog = re.compile(r"""^\d""")
-            object_id = 1
-            table = pq.read_table(f)
-            schema = table.schema
-            for field in schema:
-                p_name = field.name
-                if p_name == "OBJECTID":
-                    a_name = f"OBJECTID_{object_id}"
-                    object_id += 1
-                elif prog.match(p_name):
-                    a_name = "F" + p_name
-                else:
-                    a_name = p_name
-                f_type = str(field.type)
-                arcpy.AddMessage(f"field name={p_name} type={f_type}")
-                if p_name not in [p_x, p_y, p_geom]:
-                    a_type = {
-                        'int32': 'INTEGER',
-                        'int64': 'LONG',
-                        'float': 'DOUBLE',
-                        'double': 'DOUBLE'
-                    }.get(f_type, 'TEXT')
-                    arcpy.management.AddField(fc, a_name, a_type, field_alias=p_name, field_length=1024)
-                    ap_fields.append(a_name)
-                    pq_fields.append(p_name)
+        prog = re.compile(r"""^\d""")
+        object_id = 1
+        table = pq.read_table(parts[0], filesystem=filesystem)
+        schema = table.schema
+        for field in schema:
+            p_name = field.name
+            if p_name == "OBJECTID":
+                a_name = f"OBJECTID_{object_id}"
+                object_id += 1
+            elif prog.match(p_name):
+                a_name = "F" + p_name
+            else:
+                a_name = p_name
+            f_type = str(field.type)
+            arcpy.AddMessage(f"field name={p_name} type={f_type}")
+            if p_name not in [p_x, p_y, p_geom]:
+                a_type = {
+                    'int32': 'INTEGER',
+                    'int64': 'LONG',
+                    'float': 'DOUBLE',
+                    'double': 'DOUBLE'
+                }.get(f_type, 'TEXT')
+                arcpy.management.AddField(fc, a_name, a_type, field_alias=p_name, field_length=1024)
+                ap_fields.append(a_name)
+                pq_fields.append(p_name)
 
         arcpy.env.autoCancelling = False
         with arcpy.da.InsertCursor(fc, ap_fields) as cursor:
             nume = 0
-            # warn = 0
             for part in parts:
                 if arcpy.env.isCancelled:
                     break
-                # arcpy.AddMessage(part)
-                with open(part, 'rb') as f:
-                    table = pq.read_table(f)
-                    arcpy.AddMessage(f"{part} rows = {table.num_rows}")
-                    pydict = table.to_pydict()
-                    for i in range(table.num_rows):
-                        row = [pydict[c][i] for c in pq_fields]
-                        # try:
-                        cursor.insertRow(row)
-                        nume += 1
-                        if nume % 1000 == 0:
-                            arcpy.SetProgressorLabel("Imported {} Features...".format(nume))
-                            if arcpy.env.isCancelled:
-                                break
-                        # except Exception as e:
-                        #     if arcpy.env.isCancelled:
-                        #         break
-                        #     if warn < 10:
-                        #         warn += 1
-                        #         arcpy.AddWarning(str(e))
-                        #         if warn == 10:
-                        #             arcpy.AddWarning("Too many warnings, will stop reporting them!")
-            arcpy.SetProgressorLabel("Imported {} Features.".format(nume))
+                table = pq.read_table(part, filesystem=filesystem)
+                arcpy.AddMessage(f"{part} rows={table.num_rows}")
+                pydict = table.to_pydict()
+                for i in range(table.num_rows):
+                    row = [pydict[c][i] for c in pq_fields]
+                    cursor.insertRow(row)
+                    nume += 1
+                    if nume % 1000 == 0:
+                        arcpy.SetProgressorLabel(f"Imported {nume} Features...")
+                        if arcpy.env.isCancelled:
+                            break
+            arcpy.SetProgressorLabel(f"Imported {nume} Features.")
         symbology = Path(__file__) / f"{p_name}.lyrx"
         if symbology.exists():
             parameters[0].symbology = str(symbology)

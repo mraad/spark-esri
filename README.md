@@ -15,10 +15,15 @@ conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
 activate spark_esri
 proswap spark_esri
-conda install --yes -c esri -c conda-forge jupyterlab=2.2 numba pandas=1.1 scikit-optimize tqdm untangle
+conda install --yes -c esri -c conda-forge -c default^
+    jupyterlab=2.2^
+    numba=0.51.2^
+    pandas=1.1^
+    untangle=1.1.1^
+    pyodbc=4.0.30
 
 # to use .toPandas()
-pip install pyarrow==1.0
+pip install pyarrow==2.0.0 s3fs==0.4.2 tqdm==4.50.2
 
 # to use @pandas_udf
 pip install pyarrow==0.8
@@ -82,3 +87,4 @@ The following is the resulting crossing points and gates statistics.
 - https://nvidia.github.io/spark-rapids
 - https://github.com/nvidia/spark-rapids
 - https://github.com/quantopian/qgrid
+- https://gist.github.com/rkaneko/dd2fae35149a29405d5e287ccd62677f Put parquet file on MinIO (S3 compatible storage) using pyarrow and s3fs
