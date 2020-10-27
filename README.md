@@ -16,14 +16,13 @@ conda create --yes --name spark_esri --clone arcgispro-py3
 activate spark_esri
 proswap spark_esri
 conda install --yes -c esri -c conda-forge -c default^
-    jupyterlab=2.2^
     numba=0.51.2^
     pandas=1.1^
     untangle=1.1.1^
     pyodbc=4.0.30
 
 # to use .toPandas()
-pip install pyarrow==2.0.0 s3fs==0.4.2 tqdm==4.50.2
+pip install boto3==1.16.0 pyarrow==2.0.0 s3fs==0.4.2 tqdm==4.50.2
 
 # to use @pandas_udf
 pip install pyarrow==0.8

@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<metadata xml:lang="en">
+    <Esri>
+        <CreaDate>20200816</CreaDate>
+        <CreaTime>14183900</CreaTime>
+        <ArcGISFormat>1.0</ArcGISFormat>
+        <SyncOnce>TRUE</SyncOnce>
+        <ModDate>20201027</ModDate>
+        <ModTime>11100600</ModTime>
+        <scaleRange>
+            <minScale>150000000</minScale>
+            <maxScale>5000</maxScale>
+        </scaleRange>
+    </Esri>
+    <toolbox name="ParquetToolbox" alias="ParquetToolbox">
+        <arcToolboxHelpPath>c:\program files\arcgis\pro\Resources\Help\gp</arcToolboxHelpPath>
+    </toolbox>
+    <dataIdInfo>
+        <idCitation>
+            <resTitle>ParquetToolbox</resTitle>
+        </idCitation>
+        <idPurp>Export and import parquet files from local or S3 file system.</idPurp>
+        <idCredit>mraad@esri.com</idCredit>
+        <searchKeys>
+            <keyword>Parquet</keyword>
+            <keyword>S3</keyword>
+        </searchKeys>
+        <idAbs>&lt;DIV STYLE="text-align:Left;"&gt;&lt;DIV&gt;&lt;P&gt;&lt;SPAN&gt;Toolbox to export and import parquet
+            files from folders in local or S3 file system.&lt;/SPAN&gt;&lt;/P&gt;&lt;/DIV&gt;&lt;/DIV&gt;
+        </idAbs>
+    </dataIdInfo>
+    <distInfo>
+        <distributor>
+            <distorFormat>
+                <formatName>ArcToolbox Toolbox</formatName>
+            </distorFormat>
+        </distributor>
+    </distInfo>
+    <mdHrLv>
+        <ScopeCd value="005"/>
+    </mdHrLv>
+    <mdDateSt Sync="TRUE">20201027</mdDateSt>
+</metadata>

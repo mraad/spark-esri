@@ -4,7 +4,6 @@
 .ipynb_checkpoints
 media/Thumbs.db
 metastore_db
-tools/*.xml
 build
 dist
 spark-warehouse
