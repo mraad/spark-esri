@@ -124,9 +124,13 @@ class ExportTool(object):
         sections = urlparse(pq_path)
         is_s3 = sections.scheme == "s3"
         if is_s3:
-            if "AWS_ACCESS_KEY_ID" not in os.environ or "AWS_SECRET_ACCESS_KEY" not in os.environ:
-                arcpy.AddError("Missing environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
-                return
+            kwargs = {}
+            if "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
+                kwargs['anon'] = False
+                kwargs['key'] = os.getenv("AWS_ACCESS_KEY_ID")
+                kwargs['secret'] = os.getenv("AWS_SECRET_ACCESS_KEY")
+            else:
+                arcpy.AddWarning("Missing environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
             bucket = sections.hostname
             if bucket is None:
                 arcpy.AddError("Make sure the S3 url is in the format s3://bucket_name/....")
@@ -141,11 +145,8 @@ class ExportTool(object):
                 put_object = False
             else:
                 put_object = True
-            filesystem = S3FileSystem(anon=False,
-                                      key=os.getenv("AWS_ACCESS_KEY_ID"),
-                                      secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                                      client_kwargs=client_kwargs
-                                      )
+            kwargs['client_kwargs'] = client_kwargs
+            filesystem = S3FileSystem(**kwargs)
             if filesystem.exists(f"{bucket}/{base_path}"):
                 arcpy.AddError(f"Object {bucket}/{base_path} already exists !")
                 return
@@ -319,7 +320,6 @@ class ImportTool(object):
         base_path = sections.path[1:]
         if sections.scheme == "s3":
             if "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
-                bucket = sections.hostname
                 client_kwargs = {}
                 if "AWS_ENDPOINT_URL" in os.environ:
                     endpoint_url = os.getenv("AWS_ENDPOINT_URL")
@@ -330,10 +330,11 @@ class ImportTool(object):
                                           secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
                                           client_kwargs=client_kwargs
                                           )
-                parts = filesystem.glob(f"{bucket}/{base_path}/part-*")
             else:
-                arcpy.AddError("Missing environment variables 'AWS_ACCESS_KEY_ID' and 'AWS_SECRET_ACCESS_KEY'.")
-                return
+                # Case when Pro is running in AWS
+                filesystem = S3FileSystem()
+            bucket = sections.hostname
+            parts = filesystem.glob(f"{bucket}/{base_path}/part-*")
         else:
             filesystem = fs.LocalFileSystem()
             p = Path(p_path)
