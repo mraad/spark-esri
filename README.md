@@ -1,6 +1,7 @@
 # Spark ESRI
 
-Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
+Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within
+a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
 ### Create a new Pro Conda Environment.
 
@@ -9,6 +10,24 @@ Start a `Python Command Prompt`:
 ![](media/Command.png)
 
 Execute the following commands:
+
+Note: You might need to add proxy settings to `.condarc` found in `C:\Program Files\ArcGIS\Pro\bin\Python`.
+
+```commandline
+conda config --set proxy_servers.http http://username:password@host:port
+conda config --set proxy_servers.https https://username:password@host:port
+```
+
+The above will produce something like the below:
+
+```text
+ssl_verify: true
+proxy_servers:
+  http: http://domainname\username:password@host:port
+  https: http://domainname\username:password@host:port
+```
+
+Create conda env:
 
 ```commandline
 conda remove --yes --all --name spark_esri
@@ -21,11 +40,7 @@ conda install --yes -c esri -c conda-forge -c default^
     untangle=1.1.1^
     pyodbc=4.0.30
 
-# to use .toPandas()
 pip install boto3==1.16.0 pyarrow==2.0.0 s3fs==0.4.2 tqdm==4.50.2
-
-# to use @pandas_udf
-pip install pyarrow==0.8
 ```
 
 Install the Esri Spark module.
@@ -36,7 +51,8 @@ cd spark-esri
 python setup.py install
 ```
 
-Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hoping that this will not be needed when we will switch to 3.0.
+Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hoping that this will not be needed when we
+will switch to 3.0.
 
 ### [Spatial Binning](spark_esri.ipynb) Notebook
 
@@ -48,7 +64,9 @@ Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hop
 
 ![](media/Micropath1.png)
 
-Please note the usage of the [range slider](https://pro.arcgis.com/en/pro-app/help/mapping/range/get-started-with-the-range-slider.htm) on the map to filter the micropaths between a user defined hour of day.
+Please note the usage of
+the [range slider](https://pro.arcgis.com/en/pro-app/help/mapping/range/get-started-with-the-range-slider.htm) on the
+map to filter the micropaths between a user defined hour of day.
 
 ![](media/Micropath2.png)
 
@@ -72,6 +90,13 @@ The following is the resulting crossing points and gates statistics.
 
 - Unify spark_esri and spark_dbconnect python modules.
 
+## My Notes:
+
+```
+# to use @pandas_udf, we have to downgrade pyarrow :-(
+pip install pyarrow==0.8
+```
+
 ## References
 
 - https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
@@ -86,4 +111,5 @@ The following is the resulting crossing points and gates statistics.
 - https://nvidia.github.io/spark-rapids
 - https://github.com/nvidia/spark-rapids
 - https://github.com/quantopian/qgrid
-- https://gist.github.com/rkaneko/dd2fae35149a29405d5e287ccd62677f Put parquet file on MinIO (S3 compatible storage) using pyarrow and s3fs
+- https://gist.github.com/rkaneko/dd2fae35149a29405d5e287ccd62677f Put parquet file on MinIO (S3 compatible storage)
+  using pyarrow and s3fs

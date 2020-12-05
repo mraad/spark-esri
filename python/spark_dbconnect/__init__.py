@@ -20,10 +20,10 @@ def spark_start(config: Dict = {}) -> SparkSession:
     pro_runtime_dir = os.path.join(pro_home, "Java", "runtime")
     os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
     conf = SparkConf()
-    # conf.set("spark.ui.enabled", False)
+    conf.set("spark.ui.enabled", False)
     conf.set("spark.ui.showConsoleProgress", False)
     conf.set("spark.sql.execution.arrow.enabled", True)
-    # conf.set("spark.sql.catalogImplementation", "in-memory")
+    conf.set("spark.sql.catalogImplementation", "in-memory")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     for k, v in config.items():
         conf.set(k, v)
@@ -62,3 +62,5 @@ def spark_stop():
                          stdout=subprocess.DEVNULL,
                          stderr=subprocess.DEVNULL)
         SparkContext._gateway = None
+    else:
+        print("Warning: Undefined variable SparkContext._gateway")

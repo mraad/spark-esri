@@ -395,7 +395,8 @@ class ImportTool(object):
                     'int32': 'INTEGER',
                     'int64': 'LONG',
                     'float': 'DOUBLE',
-                    'double': 'DOUBLE'
+                    'double': 'DOUBLE',
+                    'timestamp[ns]': 'DATE'
                 }.get(f_type, 'TEXT')
                 arcpy.management.AddField(fc, a_name, a_type, field_alias=p_name, field_length=1024)
                 ap_fields.append(a_name)

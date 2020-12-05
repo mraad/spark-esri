@@ -1,0 +1,19 @@
+#
+# conda env remove --yes --name dbconnect
+# conda env create -f dbconnect.yml
+#
+name: dbconnect
+channels:
+  - conda-forge
+dependencies:
+  - python=3.6
+  - jupyter=1.0.0
+  - jupyterlab=2.2.8
+  - ipywidgets=7.5.1
+  - pyarrow=2.0.0
+  - geopandas=0.8.1
+  - pip
+  - pip:
+      - opencv-python-headless==4.1.2.30
+      - databricks-connect==6.6
+      - databricks-cli==0.14.0
