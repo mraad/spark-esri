@@ -30,14 +30,16 @@ Create a new conda environment:
 ```commandline
 conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
+
 proswap spark_esri
+
 conda install --yes -c esri -c conda-forge -c default^
     numba=0.51.2^
     pandas=1.1^
     untangle=1.1.1^
     pyodbc=4.0.30
 
-pip install boto3==1.16.0 pyarrow==2.0.0 s3fs==0.4.2 tqdm==4.50.2
+pip install boto3==1.16.0 pyarrow==2.0.0 s3fs==0.4.2
 ```
 
 Install the Esri Spark module.
