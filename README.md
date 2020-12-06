@@ -9,9 +9,7 @@ Start a `Python Command Prompt`:
 
 ![](media/Command.png)
 
-Execute the following commands:
-
-Note: You might need to add proxy settings to `.condarc` found in `C:\Program Files\ArcGIS\Pro\bin\Python`.
+**Note**: You _might_ need to add proxy settings to `.condarc` located in `C:\Program Files\ArcGIS\Pro\bin\Python`.
 
 ```commandline
 conda config --set proxy_servers.http http://username:password@host:port
@@ -27,12 +25,11 @@ proxy_servers:
   https: http://domainname\username:password@host:port
 ```
 
-Create conda env:
+Create a new conda environment:
 
 ```commandline
 conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
-activate spark_esri
 proswap spark_esri
 conda install --yes -c esri -c conda-forge -c default^
     numba=0.51.2^
@@ -45,14 +42,13 @@ pip install boto3==1.16.0 pyarrow==2.0.0 s3fs==0.4.2 tqdm==4.50.2
 
 Install the Esri Spark module.
 
+**Note**: You _might_ need to install [Git for Windows](https://gitforwindows.org/).
+
 ```commandline
 git clone https://github.com/mraad/spark-esri.git
 cd spark-esri
 python setup.py install
 ```
-
-Note that the `java_gateway.py` code is borrowed from Spark 3.0 source code. Hoping that this will not be needed when we
-will switch to 3.0.
 
 ### [Spatial Binning](spark_esri.ipynb) Notebook
 
