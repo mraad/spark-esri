@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='spark_esri',
-    version='0.1',
+    version='0.2',
     description='Python Bindings to built-in Spark instance in ArcGIS Pro',
     long_description='Python Bindings to built-in Spark instance in ArcGIS Pro',
     long_description_content_type="text/markdown",

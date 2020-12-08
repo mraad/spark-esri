@@ -17,7 +17,18 @@ try:
 except ModuleNotFoundError:
     pyarrow_found = False
     pyarrow_error = """
-    Please execute 'pip install -U boto3==1.16.0 pyarrow==2.0.0 s3fs==0.4.2' in the ArcGIS Python Command Prompt. 
+    Please execute 'pip install -U boto3==1.16.31 pyarrow==2.0.0 s3fs==0.5.1' in the ArcGIS Python Command Prompt. 
+    """
+
+try:
+    import gcsfs
+
+    gcsfs_found = True
+    gcsfs_error = None
+except ModuleNotFoundError:
+    gcsfs_found = False
+    gcsfs_error = """
+    Please execute 'conda install -c conda-forge gcsfs=0.7.1' in the ArcGIS Python Command Prompt.
     """
 
 
@@ -318,7 +329,17 @@ class ImportTool(object):
 
         sections = urlparse(p_path)
         base_path = sections.path[1:]
-        if sections.scheme == "s3":
+        if sections.scheme == "gs":
+            if not gcsfs_found:
+                arcpy.AddError(gcsfs_error)
+                return
+            if "GOOGLE_APPLICATION_CREDENTIALS" not in os.environ:
+                arcpy.AddError("Environment variable GOOGLE_APPLICATION_CREDENTIALS is missing.")
+                return
+            filesystem = gcsfs.GCSFileSystem()
+            bucket = sections.hostname
+            parts = filesystem.glob(f"{bucket}/{base_path}/part-*")
+        elif sections.scheme == "s3":
             if "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
                 client_kwargs = {}
                 if "AWS_ENDPOINT_URL" in os.environ:
@@ -384,7 +405,7 @@ class ImportTool(object):
             if p_name == "OBJECTID":
                 a_name = f"OBJECTID_{object_id}"
                 object_id += 1
-            elif prog.match(p_name):
+            elif prog.match(p_name):  # Check for field names that start with a digit
                 a_name = "F" + p_name
             else:
                 a_name = p_name
