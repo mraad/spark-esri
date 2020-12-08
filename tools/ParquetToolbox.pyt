@@ -401,17 +401,17 @@ class ImportTool(object):
         table = pq.read_table(parts[0], filesystem=filesystem)
         schema = table.schema
         for field in schema:
-            p_name = field.name
-            if p_name == "OBJECTID":
+            f_name = field.name
+            if f_name == "OBJECTID":
                 a_name = f"OBJECTID_{object_id}"
                 object_id += 1
-            elif prog.match(p_name):  # Check for field names that start with a digit
-                a_name = "F" + p_name
+            elif prog.match(f_name):  # Check for field names that start with a digit
+                a_name = "F" + f_name
             else:
-                a_name = p_name
+                a_name = f_name
             f_type = str(field.type)
-            arcpy.AddMessage(f"field name={p_name} type={f_type}")
-            if p_name not in [p_x, p_y, p_geom]:
+            arcpy.AddMessage(f"field name={f_name} type={f_type}")
+            if f_name not in [p_x, p_y, p_geom]:
                 a_type = {
                     'int32': 'INTEGER',
                     'int64': 'LONG',
@@ -419,9 +419,9 @@ class ImportTool(object):
                     'double': 'DOUBLE',
                     'timestamp[ns]': 'DATE'
                 }.get(f_type, 'TEXT')
-                arcpy.management.AddField(fc, a_name, a_type, field_alias=p_name, field_length=1024)
+                arcpy.management.AddField(fc, a_name, a_type, field_alias=f_name, field_length=1024)
                 ap_fields.append(a_name)
-                pq_fields.append(p_name)
+                pq_fields.append(f_name)
 
         arcpy.env.autoCancelling = False
         with arcpy.da.InsertCursor(fc, ap_fields) as cursor:
@@ -441,7 +441,7 @@ class ImportTool(object):
                         if arcpy.env.isCancelled:
                             break
             arcpy.SetProgressorLabel(f"Imported {nume} Features.")
-        symbology = Path(__file__) / f"{p_name}.lyrx"
+        symbology = Path(__file__).parent / f"{p_name}.lyrx"
         if symbology.exists():
             parameters[0].symbology = str(symbology)
         parameters[0].value = fc

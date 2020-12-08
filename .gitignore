@@ -10,3 +10,4 @@ spark-warehouse
 derby.log
 python/spark_esri.egg-info
 *.iml
+tools/*.lyrx
