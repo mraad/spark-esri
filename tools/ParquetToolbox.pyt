@@ -419,7 +419,10 @@ class ImportTool(object):
                     'double': 'DOUBLE',
                     'timestamp[ns]': 'DATE'
                 }.get(f_type, 'TEXT')
-                arcpy.management.AddField(fc, a_name, a_type, field_alias=f_name, field_length=1024)
+                arcpy.management.AddField(fc, a_name, a_type,
+                                          field_alias=f_name,
+                                          field_is_nullable="NULLABLE",
+                                          field_length=1024)
                 ap_fields.append(a_name)
                 pq_fields.append(f_name)
 
