@@ -1,6 +1,8 @@
+import io
 import os
 import re
 from pathlib import Path
+from typing import List
 from urllib.parse import urlparse
 
 import arcpy
@@ -10,15 +12,21 @@ try:
     import pyarrow as pa
     import pyarrow.parquet as pq
     from pyarrow import fs
-    from s3fs import S3FileSystem
 
     pyarrow_found = True
     pyarrow_error = None
 except ModuleNotFoundError:
     pyarrow_found = False
     pyarrow_error = """
-    Please execute 'pip install -U boto3==1.16.31 pyarrow==2.0.0 s3fs==0.5.1' in the ArcGIS Python Command Prompt. 
+    Please execute 'pip install -U boto3==1.16.31 pyarrow==2.0.0' in the ArcGIS Python Command Prompt. 
     """
+
+try:
+    from s3fs import S3FileSystem  # conda install -c conda-forge s3fs=0.5.1 or pip install s3fs==0.5.1
+
+    s3fs_found = True
+except ModuleNotFoundError:
+    s3fs_found = False
 
 try:
     import gcsfs
@@ -224,6 +232,9 @@ class ImportTool(object):
         The name of the files in the folder HAVE to start with 'part-'
         """
         self.canRunInBackground = True
+        self.filesystem = None
+        self.bucket = None
+        self.s3 = None
 
     def getParameterInfo(self):
         out_fc = arcpy.Parameter(
@@ -314,6 +325,24 @@ class ImportTool(object):
     def updateMessages(self, parameters):
         return
 
+    def read_table(self, pq_path: str):
+        if self.filesystem:
+            table = pq.read_table(pq_path, filesystem=self.filesystem)
+        else:
+            buffer = io.BytesIO()
+            s3_object = self.s3.Object(self.bucket, pq_path)
+            s3_object.download_fileobj(buffer)
+            table = pq.read_table(buffer)
+        return table
+
+    def glob(self, base_path: str) -> List[str]:
+        if self.filesystem:
+            arr = self.filesystem.glob(f"{self.bucket}/{base_path}/part-*")
+        else:
+            prefix = f"{base_path}/part-"
+            arr = [item.key for item in self.s3.Bucket(self.bucket).objects.filter(Prefix=prefix)]
+        return arr
+
     def execute(self, parameters, _):
         if not pyarrow_found:
             arcpy.AddError(pyarrow_error)
@@ -336,28 +365,36 @@ class ImportTool(object):
             if "GOOGLE_APPLICATION_CREDENTIALS" not in os.environ:
                 arcpy.AddError("Environment variable GOOGLE_APPLICATION_CREDENTIALS is missing.")
                 return
-            filesystem = gcsfs.GCSFileSystem()
-            bucket = sections.hostname
-            parts = filesystem.glob(f"{bucket}/{base_path}/part-*")
+            self.filesystem = gcsfs.GCSFileSystem()
+            self.bucket = sections.hostname
+            parts = self.filesystem.glob(f"{self.bucket}/{base_path}/part-*")
         elif sections.scheme == "s3":
+            self.bucket = sections.hostname
+            client_kwargs = {}
             if "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
-                client_kwargs = {}
-                if "AWS_ENDPOINT_URL" in os.environ:
+                is_minio = False
+                if "AWS_ENDPOINT_URL" in os.environ:  # Using MinIO
+                    is_minio = True
                     endpoint_url = os.getenv("AWS_ENDPOINT_URL")
                     client_kwargs['endpoint_url'] = endpoint_url
-                    arcpy.AddWarning(f"Using endpoint_url:{endpoint_url}")
-                filesystem = S3FileSystem(anon=False,
-                                          key=os.getenv("AWS_ACCESS_KEY_ID"),
-                                          secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
-                                          client_kwargs=client_kwargs
-                                          )
+                    arcpy.AddWarning(f"Using environment variable AWS_ENDPOINT_URL ({endpoint_url})")
+                if s3fs_found:
+                    self.filesystem = S3FileSystem(anon=False,
+                                                   key=os.getenv("AWS_ACCESS_KEY_ID"),
+                                                   secret=os.getenv("AWS_SECRET_ACCESS_KEY"),
+                                                   client_kwargs=client_kwargs
+                                                   )
+                else:
+                    if is_minio:
+                        client_kwargs['config'] = boto3.session.Config(signature_version='s3v4')
+                    self.s3 = boto3.resource('s3', **client_kwargs)
             else:
                 # Case when Pro is running in AWS
-                filesystem = S3FileSystem()
-            bucket = sections.hostname
-            parts = filesystem.glob(f"{bucket}/{base_path}/part-*")
+                self.filesystem = S3FileSystem()
+            # parts = self.filesystem.glob(f"{self.bucket}/{base_path}/part-*")
+            parts = self.glob(base_path)
         else:
-            filesystem = fs.LocalFileSystem()
+            self.filesystem = fs.LocalFileSystem()
             p = Path(p_path)
             if p.is_file():
                 arcpy.AddError(f"{p_path} is not a folder. Make sure all the files in {p_path} start with 'part-'.")
@@ -365,7 +402,7 @@ class ImportTool(object):
             parts = list(p.glob('part-*'))
 
         if len(parts) == 0:
-            arcpy.AddError(f"Cannot find files in {p_path} that start with 'part-'.")
+            arcpy.AddError(f"Cannot find files in '{p_path}' that start with 'part-'.")
             return
 
         ws = "memory" if parameters[8].value else arcpy.env.scratchGDB
@@ -373,7 +410,7 @@ class ImportTool(object):
         if arcpy.Exists(fc):
             arcpy.management.Delete(fc)
 
-        is_fc = True
+        is_feature_class = True
         if p_geom is not None:
             ap_fields = ['SHAPE@WKB']
             pq_fields = [p_geom]
@@ -383,9 +420,9 @@ class ImportTool(object):
         else:
             ap_fields = []
             pq_fields = []
-            is_fc = False
+            is_feature_class = False
 
-        if is_fc:
+        if is_feature_class:
             arcpy.management.CreateFeatureclass(
                 ws,
                 p_name,
@@ -398,7 +435,8 @@ class ImportTool(object):
 
         prog = re.compile(r"""^\d""")
         object_id = 1
-        table = pq.read_table(parts[0], filesystem=filesystem)
+        # table = pq.read_table(parts[0], filesystem=self.filesystem)
+        table = self.read_table(parts[0])
         schema = table.schema
         for field in schema:
             f_name = field.name
@@ -432,7 +470,8 @@ class ImportTool(object):
             for part in parts:
                 if arcpy.env.isCancelled:
                     break
-                table = pq.read_table(part, filesystem=filesystem)
+                # table = pq.read_table(part, filesystem=self.filesystem)
+                table = self.read_table(part)
                 arcpy.AddMessage(f"{part} rows={table.num_rows}")
                 pydict = table.to_pydict()
                 for i in range(table.num_rows):
@@ -444,8 +483,8 @@ class ImportTool(object):
                         if arcpy.env.isCancelled:
                             break
             arcpy.SetProgressorLabel(f"Imported {nume} Features.")
+        parameters[0].value = fc
         symbology = Path(__file__).parent / f"{p_name}.lyrx"
         if symbology.exists():
             parameters[0].symbology = str(symbology)
-        parameters[0].value = fc
         arcpy.ResetProgressor()
