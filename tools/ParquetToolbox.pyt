@@ -463,20 +463,21 @@ class ImportTool(object):
                     a_name = "F" + f_name
                 else:
                     a_name = f_name
-                f_type = str(field.type)
+                f_type = str(field.type)[:5]
                 arcpy.AddMessage(f"col name={f_name} type={f_type}")
                 if f_name not in [p_x, p_y, p_geom]:
                     a_type = {
                         'int32': 'INTEGER',
                         'int64': 'LONG',
                         'float': 'DOUBLE',
-                        'double': 'DOUBLE',
-                        'timestamp[ns]': 'DATE'
+                        'doubl': 'DOUBLE',
+                        'times': 'DATE',
+                        'decim': 'DOUBLE'
                     }.get(f_type, 'TEXT')
                     arcpy.management.AddField(fc, a_name, a_type,
                                               field_alias=f_name,
                                               field_is_nullable="NULLABLE",
-                                              field_length=1024)
+                                              field_length=512)
                     ap_fields.append(a_name)
                     pq_fields.append(f_name)
 
