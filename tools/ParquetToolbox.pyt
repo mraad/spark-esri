@@ -269,32 +269,32 @@ class ImportTool(object):
 
         field_x = arcpy.Parameter(
             name="field_x",
-            displayName="X Field",
+            displayName="X Column",
             direction="Input",
             datatype="GPString",
             parameterType="Optional")
 
         field_y = arcpy.Parameter(
             name="field_y",
-            displayName="Y Field",
+            displayName="Y Column",
             direction="Input",
             datatype="GPString",
             parameterType="Optional")
 
         field_wkb = arcpy.Parameter(
             name="field_wkb",
-            displayName="WKB Field",
+            displayName="WKB Column",
             direction="Input",
             datatype="GPString",
             parameterType="Optional")
 
         field_col = arcpy.Parameter(
             name="field_col",
-            displayName="Columns to read (RegExp)",
+            displayName="RegExp of columns to import",
             direction="Input",
             datatype="GPString",
             parameterType="Required")
-        field_col.value = ".*"
+        field_col.value = ".+"
 
         geom_type = arcpy.Parameter(
             name="geom_type",
@@ -446,7 +446,7 @@ class ImportTool(object):
         else:
             arcpy.management.CreateTable(ws, p_name)
 
-        arcpy.AddMessage(f"Fields regexp = {p_expr}")
+        arcpy.AddMessage(f"Cols regexp {p_expr}")
         prog = re.compile(r"""^\d""")
         expr = re.compile(p_expr)
         object_id = 1
@@ -464,7 +464,7 @@ class ImportTool(object):
                 else:
                     a_name = f_name
                 f_type = str(field.type)
-                arcpy.AddMessage(f"field name={f_name} type={f_type}")
+                arcpy.AddMessage(f"col name={f_name} type={f_type}")
                 if f_name not in [p_x, p_y, p_geom]:
                     a_type = {
                         'int32': 'INTEGER',
