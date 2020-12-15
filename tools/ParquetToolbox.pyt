@@ -259,13 +259,13 @@ class ImportTool(object):
             datatype="GPString",
             parameterType="Required")
 
-        param_sp_ref = arcpy.Parameter(
+        sp_ref = arcpy.Parameter(
             name="in_sp_ref",
             displayName="Spatial Reference",
             direction="Input",
             datatype="GPSpatialReference",
             parameterType="Required")
-        param_sp_ref.value = arcpy.SpatialReference(4326).exportToString()
+        sp_ref.value = arcpy.SpatialReference(4326).exportToString()
 
         field_x = arcpy.Parameter(
             name="field_x",
@@ -281,40 +281,49 @@ class ImportTool(object):
             datatype="GPString",
             parameterType="Optional")
 
-        field_wkt = arcpy.Parameter(
-            name="field_wkt",
+        field_wkb = arcpy.Parameter(
+            name="field_wkb",
             displayName="WKB Field",
             direction="Input",
             datatype="GPString",
             parameterType="Optional")
 
-        p_type = arcpy.Parameter(
+        field_col = arcpy.Parameter(
+            name="field_col",
+            displayName="Columns to read (RegExp)",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Required")
+        field_col.value = ".*"
+
+        geom_type = arcpy.Parameter(
             name="geom_type",
             displayName="Geometry Type",
             direction="Input",
             datatype="GPString",
             parameterType="Required")
-        p_type.filter.type = "ValueList"
-        p_type.filter.list = ["POINT", "POLYLINE", "POLYGON", "MULTIPOINT"]
-        p_type.value = "POINT"
+        geom_type.filter.type = "ValueList"
+        geom_type.filter.list = ["POINT", "POLYLINE", "POLYGON", "MULTIPOINT"]
+        geom_type.value = "POINT"
 
-        param_memory = arcpy.Parameter(
+        in_memory = arcpy.Parameter(
             name="in_memory",
             displayName="Use Memory Workspace",
             direction="Input",
             datatype="Boolean",
             parameterType="Optional")
-        param_memory.value = False
+        in_memory.value = False
 
         return [out_fc,
                 param_path,
                 param_name,
                 field_x,
                 field_y,
-                field_wkt,
-                p_type,
-                param_sp_ref,
-                param_memory]
+                field_wkb,
+                field_col,
+                geom_type,
+                sp_ref,
+                in_memory]
 
     def isLicensed(self):
         return True
@@ -353,8 +362,10 @@ class ImportTool(object):
         p_x = parameters[3].value
         p_y = parameters[4].value
         p_geom = parameters[5].value
-        p_type = parameters[6].value
-        p_sp_ref = parameters[7].value
+        p_expr = parameters[6].value
+        p_type = parameters[7].value
+        p_sp_ref = parameters[8].value
+        p_memory = parameters[9].value
 
         sections = urlparse(p_path)
         base_path = sections.path[1:]
@@ -405,7 +416,7 @@ class ImportTool(object):
             arcpy.AddError(f"Cannot find files in '{p_path}' that start with 'part-'.")
             return
 
-        ws = "memory" if parameters[8].value else arcpy.env.scratchGDB
+        ws = "memory" if p_memory else arcpy.env.scratchGDB
         fc = os.path.join(ws, p_name)
         if arcpy.Exists(fc):
             arcpy.management.Delete(fc)
@@ -414,9 +425,11 @@ class ImportTool(object):
         if p_geom is not None:
             ap_fields = ['SHAPE@WKB']
             pq_fields = [p_geom]
+            p_expr = f"{p_expr}|{p_geom}"
         elif p_x is not None and p_y is not None:
             ap_fields = ['SHAPE@X', 'SHAPE@Y']
             pq_fields = [p_x, p_y]
+            p_expr = f"{p_expr}|{p_x}|{p_y}"
         else:
             ap_fields = []
             pq_fields = []
@@ -433,36 +446,39 @@ class ImportTool(object):
         else:
             arcpy.management.CreateTable(ws, p_name)
 
+        arcpy.AddMessage(f"Fields regexp = {p_expr}")
         prog = re.compile(r"""^\d""")
+        expr = re.compile(p_expr)
         object_id = 1
         # table = pq.read_table(parts[0], filesystem=self.filesystem)
         table = self.read_table(parts[0])
         schema = table.schema
         for field in schema:
             f_name = field.name
-            if f_name == "OBJECTID":
-                a_name = f"OBJECTID_{object_id}"
-                object_id += 1
-            elif prog.match(f_name):  # Check for field names that start with a digit
-                a_name = "F" + f_name
-            else:
-                a_name = f_name
-            f_type = str(field.type)
-            arcpy.AddMessage(f"field name={f_name} type={f_type}")
-            if f_name not in [p_x, p_y, p_geom]:
-                a_type = {
-                    'int32': 'INTEGER',
-                    'int64': 'LONG',
-                    'float': 'DOUBLE',
-                    'double': 'DOUBLE',
-                    'timestamp[ns]': 'DATE'
-                }.get(f_type, 'TEXT')
-                arcpy.management.AddField(fc, a_name, a_type,
-                                          field_alias=f_name,
-                                          field_is_nullable="NULLABLE",
-                                          field_length=1024)
-                ap_fields.append(a_name)
-                pq_fields.append(f_name)
+            if expr.match(f_name):
+                if f_name == "OBJECTID":
+                    a_name = f"OBJECTID_{object_id}"
+                    object_id += 1
+                elif prog.match(f_name):  # Check for field names that start with a digit
+                    a_name = "F" + f_name
+                else:
+                    a_name = f_name
+                f_type = str(field.type)
+                arcpy.AddMessage(f"field name={f_name} type={f_type}")
+                if f_name not in [p_x, p_y, p_geom]:
+                    a_type = {
+                        'int32': 'INTEGER',
+                        'int64': 'LONG',
+                        'float': 'DOUBLE',
+                        'double': 'DOUBLE',
+                        'timestamp[ns]': 'DATE'
+                    }.get(f_type, 'TEXT')
+                    arcpy.management.AddField(fc, a_name, a_type,
+                                              field_alias=f_name,
+                                              field_is_nullable="NULLABLE",
+                                              field_length=1024)
+                    ap_fields.append(a_name)
+                    pq_fields.append(f_name)
 
         arcpy.env.autoCancelling = False
         with arcpy.da.InsertCursor(fc, ap_fields) as cursor:
