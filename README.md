@@ -34,19 +34,19 @@ conda create --yes --name spark_esri --clone arcgispro-py3
 proswap spark_esri
 
 conda install --yes -c conda-forge -c esri -c default^
-    numba=0.52.0^
-    pandas=1.1.5^
-    untangle=1.1.1^
-    pyodbc=4.0.30^
+    "numba>=0.52.0"^
+    "pandas>=1.1.5"^
+    "untangle>=1.1.1"^
+    "pyodbc>=4.0.30"^
 
 
-pip install pyarrow==2.0.0
+pip install "pyarrow>=2.0.0"
 
 # To use s3://
-conda install --yes -c conda-forge -c esri -c default boto3=1.16.33 s3fs=0.4.2
+conda install --yes -c conda-forge -c esri -c default "boto3>=1.16.33" "s3fs>=0.4.2"
 
 # To use gs://
-conda install --yes -c conda-forge -c esri -c default gcsfs=0.7.1
+conda install --yes -c conda-forge -c esri -c default "gcsfs>=0.7.1"
 ```
 
 Install the Esri Spark module.
