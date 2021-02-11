@@ -1,7 +1,8 @@
 # Spark ESRI
 
-Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within
-a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
+Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
+
+**NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(**
 
 ### Create a new Pro Conda Environment.
 
@@ -33,20 +34,18 @@ conda create --yes --name spark_esri --clone arcgispro-py3
 
 proswap spark_esri
 
-conda install --yes -c conda-forge -c esri -c default^
-    "numba>=0.52.0"^
-    "pandas>=1.1.5"^
-    "untangle>=1.1.1"^
-    "pyodbc>=4.0.30"^
+pip install pyarrow==2.0.0
 
-
-pip install "pyarrow>=2.0.0"
-
-# To use s3://
-conda install --yes -c conda-forge -c esri -c default "boto3>=1.16.33" "s3fs>=0.4.2"
-
-# To use gs://
-conda install --yes -c conda-forge -c esri -c default "gcsfs>=0.7.1"
+conda install --yes -c esri -c conda-forge -c default^
+    "numba=0.52.*"^
+    "pandas=1.1.*"^
+    "untangle=1.1.*"^
+    "pyodbc=4.0.*"^
+    "boto3=1.16.*"^
+    "s3fs=0.5.*"^
+    "gcsfs=0.7.*"
+    
+    
 ```
 
 Install the Esri Spark module.
@@ -69,9 +68,8 @@ python setup.py install
 
 ![](media/Micropath1.png)
 
-Please note the usage of
-the [range slider](https://pro.arcgis.com/en/pro-app/help/mapping/range/get-started-with-the-range-slider.htm) on the
-map to filter the micropaths between a user defined hour of day.
+Please note the usage of the [range slider](https://pro.arcgis.com/en/pro-app/help/mapping/range/get-started-with-the-range-slider.htm) on the map to filter the micropaths between
+a user defined hour of day.
 
 ![](media/Micropath2.png)
 

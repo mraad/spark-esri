@@ -1,6 +1,7 @@
 import io
 import os
 import re
+import tempfile
 from pathlib import Path
 from typing import List
 from urllib.parse import urlparse
@@ -60,51 +61,51 @@ class ExportTool(object):
 
     def getParameterInfo(self):
         tab_view = arcpy.Parameter(
-            name="tab_view",
-            displayName="Input Dataset",
-            direction="Input",
-            datatype="Table View",
-            parameterType="Required")
+                name="tab_view",
+                displayName="Input Dataset",
+                direction="Input",
+                datatype="Table View",
+                parameterType="Required")
 
         pq_name = arcpy.Parameter(
-            name="pq_name",
-            displayName="Output Parquet Folder",
-            direction="Output",
-            datatype="String",
-            parameterType="Required")
+                name="pq_name",
+                displayName="Output Parquet Folder",
+                direction="Output",
+                datatype="String",
+                parameterType="Required")
 
         output_shape = arcpy.Parameter(
-            name="output_shape",
-            displayName="Output Shape",
-            direction="Input",
-            datatype="Boolean",
-            parameterType="Required")
+                name="output_shape",
+                displayName="Output Shape",
+                direction="Input",
+                datatype="Boolean",
+                parameterType="Required")
         output_shape.value = True
 
         shape_format = arcpy.Parameter(
-            name="shape_format",
-            displayName="Shape Format",
-            direction="Input",
-            datatype="GPString",
-            parameterType="Required")
+                name="shape_format",
+                displayName="Shape Format",
+                direction="Input",
+                datatype="GPString",
+                parameterType="Required")
         shape_format.value = "WKB"
         shape_format.filter.type = "ValueList"
         shape_format.filter.list = ["WKT", "WKB", "XY"]
 
         sp_ref = arcpy.Parameter(
-            name="sp_ref",
-            displayName="Output Spatial Reference",
-            direction="Input",
-            datatype="GPSpatialReference",
-            parameterType="Required")
+                name="sp_ref",
+                displayName="Output Spatial Reference",
+                direction="Input",
+                datatype="GPSpatialReference",
+                parameterType="Required")
         sp_ref.value = arcpy.SpatialReference(4326).exportToString()
 
         batch_size = arcpy.Parameter(
-            name="batch_size",
-            displayName="Batch Size",
-            direction="Input",
-            datatype="GPLong",
-            parameterType="Required")
+                name="batch_size",
+                displayName="Batch Size",
+                direction="Input",
+                datatype="GPLong",
+                parameterType="Required")
         batch_size.value = 1_00_000
 
         return [tab_view, pq_name, output_shape, shape_format, sp_ref, batch_size]
@@ -238,80 +239,80 @@ class ImportTool(object):
 
     def getParameterInfo(self):
         out_fc = arcpy.Parameter(
-            name="out_fc",
-            displayName="out_fc",
-            direction="Output",
-            datatype=["Feature Layer", "Table"],
-            parameterType="Derived")
+                name="out_fc",
+                displayName="out_fc",
+                direction="Output",
+                datatype=["Feature Layer", "Table"],
+                parameterType="Derived")
 
         param_path = arcpy.Parameter(
-            name="in_file",
-            displayName="Parquet Folder",
-            direction="Input",
-            datatype=["DEFolder", "String"],
-            parameterType="Required")
+                name="in_file",
+                displayName="Parquet Folder",
+                direction="Input",
+                datatype=["DEFolder", "String"],
+                parameterType="Required")
         # param_path.value = os.path.join("Z:", os.sep)
 
         param_name = arcpy.Parameter(
-            name="in_name",
-            displayName="Output Layer Name",
-            direction="Input",
-            datatype="GPString",
-            parameterType="Required")
+                name="in_name",
+                displayName="Output Layer Name",
+                direction="Input",
+                datatype="GPString",
+                parameterType="Required")
 
         sp_ref = arcpy.Parameter(
-            name="in_sp_ref",
-            displayName="Spatial Reference",
-            direction="Input",
-            datatype="GPSpatialReference",
-            parameterType="Required")
+                name="in_sp_ref",
+                displayName="Spatial Reference",
+                direction="Input",
+                datatype="GPSpatialReference",
+                parameterType="Required")
         sp_ref.value = arcpy.SpatialReference(4326).exportToString()
 
         field_x = arcpy.Parameter(
-            name="field_x",
-            displayName="X Column",
-            direction="Input",
-            datatype="GPString",
-            parameterType="Optional")
+                name="field_x",
+                displayName="X Column",
+                direction="Input",
+                datatype="GPString",
+                parameterType="Optional")
 
         field_y = arcpy.Parameter(
-            name="field_y",
-            displayName="Y Column",
-            direction="Input",
-            datatype="GPString",
-            parameterType="Optional")
+                name="field_y",
+                displayName="Y Column",
+                direction="Input",
+                datatype="GPString",
+                parameterType="Optional")
 
         field_wkb = arcpy.Parameter(
-            name="field_wkb",
-            displayName="WKB Column",
-            direction="Input",
-            datatype="GPString",
-            parameterType="Optional")
+                name="field_wkb",
+                displayName="WKB Column",
+                direction="Input",
+                datatype="GPString",
+                parameterType="Optional")
 
         field_col = arcpy.Parameter(
-            name="field_col",
-            displayName="RegExp of columns to import",
-            direction="Input",
-            datatype="GPString",
-            parameterType="Required")
+                name="field_col",
+                displayName="RegExp of columns to import",
+                direction="Input",
+                datatype="GPString",
+                parameterType="Required")
         field_col.value = ".+"
 
         geom_type = arcpy.Parameter(
-            name="geom_type",
-            displayName="Geometry Type",
-            direction="Input",
-            datatype="GPString",
-            parameterType="Required")
+                name="geom_type",
+                displayName="Geometry Type",
+                direction="Input",
+                datatype="GPString",
+                parameterType="Required")
         geom_type.filter.type = "ValueList"
         geom_type.filter.list = ["POINT", "POLYLINE", "POLYGON", "MULTIPOINT"]
         geom_type.value = "POINT"
 
         in_memory = arcpy.Parameter(
-            name="in_memory",
-            displayName="Use Memory Workspace",
-            direction="Input",
-            datatype="Boolean",
-            parameterType="Optional")
+                name="in_memory",
+                displayName="Use Memory Workspace",
+                direction="Input",
+                datatype="Boolean",
+                parameterType="Optional")
         in_memory.value = False
 
         return [out_fc,
@@ -366,6 +367,14 @@ class ImportTool(object):
         p_type = parameters[7].value
         p_sp_ref = parameters[8].value
         p_memory = parameters[9].value
+
+        last_symbology = None
+        project = arcpy.mp.ArcGISProject('current')
+        for l in project.activeMap.listLayers():
+            if l.name == p_name:
+                last_symbology = os.path.join(tempfile.mkdtemp(), p_name)
+                l.saveACopy(last_symbology)
+                arcpy.AddMessage(last_symbology)
 
         sections = urlparse(p_path)
         base_path = sections.path[1:]
@@ -437,16 +446,16 @@ class ImportTool(object):
 
         if is_feature_class:
             arcpy.management.CreateFeatureclass(
-                ws,
-                p_name,
-                p_type,
-                spatial_reference=p_sp_ref,
-                has_m="DISABLED",
-                has_z="DISABLED")
+                    ws,
+                    p_name,
+                    p_type,
+                    spatial_reference=p_sp_ref,
+                    has_m="DISABLED",
+                    has_z="DISABLED")
         else:
             arcpy.management.CreateTable(ws, p_name)
 
-        arcpy.AddMessage(f"Cols regexp {p_expr}")
+        # arcpy.AddMessage(f"Cols regexp {p_expr}")
         prog = re.compile(r"""^\d""")
         expr = re.compile(p_expr)
         object_id = 1
@@ -501,7 +510,10 @@ class ImportTool(object):
                             break
             arcpy.SetProgressorLabel(f"Imported {nume} Features.")
         parameters[0].value = fc
-        symbology = Path(__file__).parent / f"{p_name}.lyrx"
-        if symbology.exists():
-            parameters[0].symbology = str(symbology)
+        if last_symbology:
+            parameters[0].symbology = f"{last_symbology}.lyrx"
+        else:
+            symbology = Path(__file__).parent / f"{p_name}.lyrx"
+            if symbology.exists():
+                parameters[0].symbology = str(symbology)
         arcpy.ResetProgressor()
