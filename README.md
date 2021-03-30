@@ -1,6 +1,7 @@
 # Spark ESRI
 
-Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
+Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within
+a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
 **NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(**
 
@@ -37,11 +38,11 @@ proswap spark_esri
 pip install pyarrow==2.0.0
 
 conda install --yes -c esri -c conda-forge -c default^
-    "numba=0.52.*"^
-    "pandas=1.1.*"^
+    "numba=0.53.*"^
+    "pandas=1.2.*"^
     "untangle=1.1.*"^
     "pyodbc=4.0.*"^
-    "boto3=1.16.*"^
+    "boto3=1.17.*"^
     "s3fs=0.5.*"^
     "gcsfs=0.7.*"
     
