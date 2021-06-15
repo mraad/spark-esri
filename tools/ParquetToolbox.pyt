@@ -465,7 +465,7 @@ class ImportTool(object):
         for field in schema:
             f_name = field.name
             if expr.match(f_name):
-                if f_name == "OBJECTID":
+                if f_name.upper() == "OBJECTID":
                     a_name = f"OBJECTID_{object_id}"
                     object_id += 1
                 elif prog.match(f_name):  # Check for field names that start with a digit
