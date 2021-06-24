@@ -19,7 +19,7 @@ try:
 except ModuleNotFoundError:
     pyarrow_found = False
     pyarrow_error = """
-    Please execute 'pip install -U boto3==1.17.* pyarrow==2.0.0' in an ArcGIS Python Command Prompt. 
+    Please execute 'conda install -c conda-forge boto3=1.17.99' in an ArcGIS Python Command Prompt. 
     """
 
 try:
