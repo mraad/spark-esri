@@ -55,6 +55,7 @@ def spark_start(config: Dict = {}) -> SparkSession:
 
     conf = SparkConf()
     conf.set("spark.master", "local[*]")
+    conf.set("spark.driver.host", "127.0.0.1")  # Added per suggestion from ctoledo-img-com-br :-)
     conf.set("spark.ui.enabled", False)
     conf.set("spark.ui.showConsoleProgress", False)
     conf.set("spark.sql.execution.arrow.enabled", True)
