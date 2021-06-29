@@ -7,6 +7,7 @@ import sys
 from typing import Dict
 
 import arcpy
+import glob
 
 pro_home = arcpy.GetInstallInfo()["InstallDir"]
 pro_lib_dir = os.path.join(pro_home, "Java", "lib")
@@ -15,7 +16,8 @@ spark_home = os.path.join(pro_runtime_dir, "spark")
 
 # add spark/py4j libraries from Pro runtime to path for import
 sys.path.insert(0, os.path.join(spark_home, "python", "lib", "pyspark.zip"))
-sys.path.insert(0, os.path.join(spark_home, "python", "lib", "py4j-0.10.7-src.zip"))
+py4j_zip = glob.glob(os.path.join(spark_home, "python", "lib", "py4j-*-src.zip"))[0]
+sys.path.insert(0, py4j_zip)
 
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
