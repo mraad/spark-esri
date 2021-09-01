@@ -61,7 +61,7 @@ def insert_cursor(
     :param name: The name of the feature class.
     :param fields: List of Tuple[name,type].
     :param ws: The output workspace. Default="memory".
-    :param spatial_reference: The spatial reference id. Default=2857.
+    :param spatial_reference: The spatial reference id. Default=3857.
     :param shape_type: The feature class shape type (POINT,POLYGON,POLYLINE,MULTIPOINT). Default="POLYGON".
     :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
     :return InsertCursor instance.
@@ -85,7 +85,7 @@ def insert_rows(rows: Iterable[Row],
     :param name: The name of the feature class.
     :param fields: List of Tuple[name,type].
     :param ws: The output workspace. Default="memory".
-    :param spatial_reference: The spatial reference id. Default=2857.
+    :param spatial_reference: The spatial reference id. Default=3857.
     :param shape_type: The feature class shape type (POINT,POLYGON,POLYLINE,MULTIPOINT). Default="POLYGON".
     :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
     """
@@ -109,7 +109,7 @@ def insert_df(
     :param df: A dataframe.
     :param name: The name of the feature class.
     :param ws: The output workspace. Default="memory".
-    :param spatial_reference: The spatial reference id. Default=2857.
+    :param spatial_reference: The spatial reference id. Default=3857.
     :param shape_type: The feature class shape type (POINT,POLYGON,POLYLINE,MULTIPOINT). Default="POLYGON".
     :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
     """
@@ -130,7 +130,7 @@ def insert_cursor_xy(
     :param name: The name of the feature class.
     :param fields: List of Tuple[name,type].
     :param ws: The output workspace. Default="memory".
-    :param spatial_reference: The spatial reference id. Default=2857.
+    :param spatial_reference: The spatial reference id. Default=3857.
     :return InsertCursor instance.
     """
     cols = ["Shape@X", "SHAPE@Y"]
@@ -148,8 +148,8 @@ def insert_rows_xy(
     :param rows: The rows to insert.
     :param name: The name of the feature class.
     :param fields: List of Tuple[name,type]
-    :param ws: The feature class workspace.
-    :param spatial_reference: The feature class spatial reference.
+    :param ws: The feature class workspace. Default="memory".
+    :param spatial_reference: The feature class spatial reference id. Default=3857.
     """
     with insert_cursor_xy(name, fields, ws, spatial_reference) as cursor:
         for row in rows:
@@ -167,8 +167,8 @@ def insert_df_xy(
 
     :param df: A dataframe.
     :param name: The name of the feature class.
-    :param ws: The feature class workspace.
-    :param spatial_reference: The feature class spatial reference.
+    :param ws: The feature class workspace. Default="memory".
+    :param spatial_reference: The feature class spatial reference. Default=3857.
     """
     fields = _df_to_fields(df, 2)
     rows = df.collect()
@@ -187,7 +187,7 @@ def insert_df_hex(
     :param df: A dataframe.
     :param name: The name of the feature class.
     :param size: The hex size in meters.
-    :param ws: The feature class workspace.
+    :param ws: The feature class workspace. Default="memory".
     """
     layout = Layout(size)
     fields = _df_to_fields(df, 1)
