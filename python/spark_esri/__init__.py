@@ -61,6 +61,7 @@ def spark_start(config: Dict = {}) -> SparkSession:
     conf.set("spark.ui.enabled", False)
     conf.set("spark.ui.showConsoleProgress", False)
     conf.set("spark.sql.execution.arrow.enabled", True)
+    conf.set("spark.sql.execution.arrow.pyspark.enabled", True)
     conf.set("spark.sql.catalogImplementation", "in-memory")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     conf.set("spark.jars", spark_jars)
