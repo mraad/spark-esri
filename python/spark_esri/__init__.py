@@ -28,7 +28,8 @@ SparkContext._gateway = None
 
 def spark_start(config: Dict = {}) -> SparkSession:
     os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
-    os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
+    if "HADOOP_HOME" not in os.environ:
+        os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
     os.environ["SPARK_HOME"] = spark_home
     # Get the active conda env.
     if os.getenv('LOCALAPPDATA'):

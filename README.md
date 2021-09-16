@@ -3,7 +3,14 @@
 Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within
 a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
-Sep 16, 2021 - The following works only for Pro Version 2.8.2. This not **not** work for version 2.8.3.  Working on a patch :-)
+Sep 16, 2021 - Perform the following as a patch for Pro 2.8.3
+
+```commandline
+cd c:\
+git clone https://github.com/kontext-tech/winutils
+```
+
+Define environment variable `HADOOP_HOME` with value `C:\winutils\hadoop-3.3.0`, and `python setup.py install` this package.
 
 ~~NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(~~
 
@@ -105,6 +112,9 @@ pip install pyarrow==0.8
 
 ## References
 
+- https://github.com/kontext-tech/winutils
+- https://github.com/cdarlint/winutils
+
 - https://github.com/steveloughran/winutils
 - https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
 - https://www.kite.com/python/answers/how-to-check-if-two-line-segments-intersect-in-python
@@ -118,5 +128,4 @@ pip install pyarrow==0.8
 - https://nvidia.github.io/spark-rapids
 - https://github.com/nvidia/spark-rapids
 - https://github.com/quantopian/qgrid
-- https://gist.github.com/rkaneko/dd2fae35149a29405d5e287ccd62677f Put parquet file on MinIO (S3 compatible storage)
-  using pyarrow and s3fs
+- https://gist.github.com/rkaneko/dd2fae35149a29405d5e287ccd62677f Put parquet file on MinIO (S3 compatible storage) using pyarrow and s3fs
