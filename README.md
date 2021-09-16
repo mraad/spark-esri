@@ -3,7 +3,9 @@
 Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within
 a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
-**NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(**
+Sep 16, 2021 - The following works only for Pro Version 2.8.2. This not **not** work for version 2.8.3.  Working on a patch :-)
+
+~~ NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-( ~~
 
 ### Create a new Pro Conda Environment.
 
@@ -35,23 +37,23 @@ conda create --yes --name spark_esri --clone arcgispro-py3
 
 proswap spark_esri
 
-pip install pyarrow==2.0.0
+pip install fsspec==2021.8.1 boto3==1.18.35 s3fs==0.4.2 pyarrow==1.0.1
+```
 
+Optional:
+
+```
 conda install --yes -c esri -c conda-forge -c default^
     "numba=0.53.*"^
     "pandas=1.2.*"^
     "untangle=1.1.*"^
     "pyodbc=4.0.*"^
-    "boto3=1.17.*"^
-    "s3fs=0.5.*"^
-    "gcsfs=0.7.*"
-    
-    
+    "gcsfs=0.7.*"        
 ```
 
 Install the Esri Spark module.
 
-**Note**: You _might_ need to install [Git for Windows](https://gitforwindows.org/).
+**Note**: You _might_ need to install [Git for Windows](https://gitforwindows.org).
 
 ```commandline
 git clone https://github.com/mraad/spark-esri.git
