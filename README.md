@@ -5,7 +5,7 @@ a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/g
 
 Sep 16, 2021 - The following works only for Pro Version 2.8.2. This not **not** work for version 2.8.3.  Working on a patch :-)
 
-~~ NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-( ~~
+~~NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(~~
 
 ### Create a new Pro Conda Environment.
 
