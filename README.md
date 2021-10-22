@@ -10,7 +10,7 @@ cd c:\
 git clone https://github.com/kontext-tech/winutils
 ```
 
-Define environment variable `HADOOP_HOME` with value `C:\winutils\hadoop-3.3.0`, and `python setup.py install` this package.
+Define a system environment variable `HADOOP_HOME` with value `C:\winutils\hadoop-3.3.0` and add to system variable `PATH` the `%HADOOP_HOME%/bin` value.
 
 ~~NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(~~
 
