@@ -26,23 +26,32 @@ from spark.java_gateway import launch_gateway
 SparkContext._gateway = None
 
 
-def spark_start(config: Dict = {}) -> SparkSession:
-    os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
-    if "HADOOP_HOME" not in os.environ:
-        os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
-    os.environ["SPARK_HOME"] = spark_home
-    # Get the active conda env.
-    if os.getenv('LOCALAPPDATA'):
+def _set_pyspark_python() -> None:
+    if 'CONDA_DEFAULT_ENV' in os.environ:
+        os.environ["PYSPARK_PYTHON"] = os.path.join(os.getenv('CONDA_DEFAULT_ENV'), "python.exe")
+    elif 'LOCALAPPDATA' in os.environ:
         pro_env_txt = os.path.join(os.getenv('LOCALAPPDATA'), 'ESRI', 'conda', 'envs', 'proenv.txt')
         if os.path.exists(pro_env_txt):
             with open(pro_env_txt, "r") as fp:
                 python_path = fp.read().strip()
                 os.environ["PYSPARK_PYTHON"] = os.path.join(python_path, "python.exe")
-        else:
-            os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3",
-                                                        "python.exe")
-    else:
-        os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
+    if "PYSPARK_PYTHON" not in os.environ:
+        print("Using first python.exe in PATH env var.")
+    #     else:
+    #         os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
+    #         print(f"WARNING:Falling back on arcgispro-py3 python as {pro_env_txt} does not exist.")
+    # else:
+    #     os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
+    #     print(f"WARNING:Falling back on arcgispro-py3 python as LOCALAPPDATA env var does not exist.")
+
+
+def spark_start(config: Dict = {}) -> SparkSession:
+    os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
+    if "HADOOP_HOME" not in os.environ:
+        os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
+    os.environ["SPARK_HOME"] = spark_home
+    # Set python to the active conda env.
+    _set_pyspark_python()
     #
     # these need to be reset on every run or pyspark will think the Java gateway is still up and running
     os.environ.unsetenv("PYSPARK_GATEWAY_PORT")

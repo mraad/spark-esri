@@ -3,6 +3,8 @@
 Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within
 a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
+Oct 27, 2021 - Pro 2.8.3 removed the reliance and existence of the file `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`.  It now depend on env var `CONDA_DEFAULT_ENV` to determine the activate conda env.
+
 Sep 16, 2021 - Perform the following as a patch for Pro 2.8.3
 
 ```commandline
@@ -129,3 +131,4 @@ pip install pyarrow==0.8
 - https://github.com/nvidia/spark-rapids
 - https://github.com/quantopian/qgrid
 - https://gist.github.com/rkaneko/dd2fae35149a29405d5e287ccd62677f Put parquet file on MinIO (S3 compatible storage) using pyarrow and s3fs
+- https://towardsdatascience.com/installing-apache-pyspark-on-windows-10-f5f0c506bea1
