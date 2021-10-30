@@ -3,11 +3,17 @@ from typing import List, Tuple, Iterable
 import os
 import arcpy
 
-from gridhex import Layout, Hex
-
 from pyspark.sql.dataframe import DataFrame
 from pyspark.sql.types import Row, IntegerType, LongType, FloatType, DoubleType, DecimalType
 from pyspark.sql.types import DateType, TimestampType, StringType
+
+try:
+    # https://github.com/mraad/grid-hex
+    from gridhex import Layout, Hex
+
+    gridhex_imported = True
+except ImportError:
+    gridhex_imported = False
 
 
 def _df_to_fields(df: DataFrame, index: int) -> List[Tuple[str, str]]:
@@ -189,6 +195,7 @@ def insert_df_hex(
     :param size: The hex size in meters.
     :param ws: The feature class workspace. Default="memory".
     """
+    assert gridhex_imported, "Install gridhex module from https://github.com/mraad/grid-hex"
     layout = Layout(size)
     fields = _df_to_fields(df, 1)
     rows = df.collect()
