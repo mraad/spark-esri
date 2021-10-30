@@ -1,7 +1,14 @@
 # Spark ESRI
 
-Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within
-a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
+Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
+
+Oct 30, 2021 - Pro 2.8 relies on the Windows registry to find the active conda environment. The registry key is `HKEY_CURRENT_USER/SOFTWARE/ESRI/ArcGISPro/PythonCondaEnv`. The value of this key is used to set the required os environment variable `PYSPARK_PYTHON` for PySpark to work correctly in a Pro notebook.
+
+As of this writing, the order to detect the active conda environment is as follows:
+
+1 - look for env var `CONDA_DEFAULT_ENV`.
+2 - look for `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`, in case of an older Pro version.
+3 - look for `HKEY_CURRENT_USER/SOFTWARE/ESRI/ArcGISPro/PythonCondaEnv`.
 
 Oct 27, 2021 - Pro 2.8.3 removed the reliance and existence of the file `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`.  It now depend on env var `CONDA_DEFAULT_ENV` to determine the activate conda env.
 
@@ -41,11 +48,10 @@ proxy_servers:
 Create a new conda environment:
 
 ```commandline
+proswap arcgispro-py3
 conda remove --yes --all --name spark_esri
 conda create --yes --name spark_esri --clone arcgispro-py3
-
 proswap spark_esri
-
 pip install fsspec==2021.8.1 boto3==1.18.35 s3fs==0.4.2 pyarrow==1.0.1
 ```
 

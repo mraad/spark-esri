@@ -4,6 +4,7 @@
 import os
 import subprocess
 import sys
+import winreg
 from typing import Dict
 
 import arcpy
@@ -27,30 +28,41 @@ SparkContext._gateway = None
 
 
 def _set_pyspark_python() -> None:
-    if 'CONDA_DEFAULT_ENV' in os.environ:
-        os.environ["PYSPARK_PYTHON"] = os.path.join(os.getenv('CONDA_DEFAULT_ENV'), "python.exe")
-    elif 'LOCALAPPDATA' in os.environ:
-        pro_env_txt = os.path.join(os.getenv('LOCALAPPDATA'), 'ESRI', 'conda', 'envs', 'proenv.txt')
+    if "CONDA_DEFAULT_ENV" in os.environ:
+        os.environ["PYSPARK_PYTHON"] = os.path.join(os.getenv("CONDA_DEFAULT_ENV"), "python.exe")
+
+    if "PYSPARK_PYTHON" not in os.environ and "LOCALAPPDATA" in os.environ:
+        # Pre Pro 2.8
+        pro_env_txt = os.path.join(os.getenv("LOCALAPPDATA"), "ESRI", "conda", "envs", "proenv.txt")
         if os.path.exists(pro_env_txt):
             with open(pro_env_txt, "r") as fp:
                 python_path = fp.read().strip()
                 os.environ["PYSPARK_PYTHON"] = os.path.join(python_path, "python.exe")
+
     if "PYSPARK_PYTHON" not in os.environ:
-        print("Using first python.exe in PATH env var.")
-    #     else:
-    #         os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
-    #         print(f"WARNING:Falling back on arcgispro-py3 python as {pro_env_txt} does not exist.")
-    # else:
-    #     os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
-    #     print(f"WARNING:Falling back on arcgispro-py3 python as LOCALAPPDATA env var does not exist.")
+        try:
+            # Pro 2.8
+            with winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER) as key_node:
+                sub_node = os.path.join("SOFTWARE", "ESRI", "ArcGISPro")
+                with winreg.OpenKey(key_node, sub_node) as sub_key:
+                    conda_env, _ = winreg.QueryValueEx(sub_key, "PythonCondaEnv")
+                    os.environ["PYSPARK_PYTHON"] = os.path.join(conda_env, "python.exe")
+        except WindowsError:
+            pass
+
+    if "PYSPARK_PYTHON" not in os.environ:
+        os.environ["PYSPARK_PYTHON"] = os.path.join(pro_home, "bin", "Python", "envs", "arcgispro-py3", "python.exe")
+        print(f"***WARNING*** Falling back on arcgispro-py3 python.")
 
 
 def spark_start(config: Dict = {}) -> SparkSession:
     os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
     if "HADOOP_HOME" not in os.environ:
-        os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
+        hadoop_home = os.path.join(pro_runtime_dir, "hadoop")
+        os.environ["HADOOP_HOME"] = hadoop_home
+        sys.path.append(os.path.join(hadoop_home, "bin"))
     os.environ["SPARK_HOME"] = spark_home
-    # Set python to the active conda env.
+    # Set python.exe based on the active conda env.
     _set_pyspark_python()
     #
     # these need to be reset on every run or pyspark will think the Java gateway is still up and running
