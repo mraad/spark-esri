@@ -111,18 +111,10 @@ The following is the resulting crossing points and gates statistics.
 
 - Unify spark_esri and spark_dbconnect python modules.
 
-## My Notes:
-
-```
-# to use @pandas_udf, we have to downgrade pyarrow :-(
-pip install pyarrow==0.8
-```
-
 ## References
 
 - https://github.com/kontext-tech/winutils
 - https://github.com/cdarlint/winutils
-
 - https://github.com/steveloughran/winutils
 - https://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
 - https://www.kite.com/python/answers/how-to-check-if-two-line-segments-intersect-in-python
