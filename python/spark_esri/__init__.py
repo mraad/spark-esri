@@ -60,7 +60,7 @@ def spark_start(config: Dict = {}) -> SparkSession:
     if "HADOOP_HOME" not in os.environ:
         hadoop_home = os.path.join(pro_runtime_dir, "hadoop")
         os.environ["HADOOP_HOME"] = hadoop_home
-        sys.path.append(os.path.join(hadoop_home, "bin"))
+        os.environ["PATH"] += os.pathsep + os.path.join(hadoop_home, "bin")
     os.environ["SPARK_HOME"] = spark_home
     # Set python.exe based on the active conda env.
     _set_pyspark_python()

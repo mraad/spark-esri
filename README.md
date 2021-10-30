@@ -6,20 +6,20 @@ Oct 30, 2021 - Pro 2.8 relies on the Windows registry to find the active conda e
 
 As of this writing, the order to detect the active conda environment is as follows:
 
-1 - look for env var `CONDA_DEFAULT_ENV`.
-2 - look for `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`, in case of an older Pro version.
-3 - look for `HKEY_CURRENT_USER/SOFTWARE/ESRI/ArcGISPro/PythonCondaEnv`.
+- look for env var `CONDA_DEFAULT_ENV`.
+- look for `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`, in case of an older Pro version.
+- look for `HKEY_CURRENT_USER/SOFTWARE/ESRI/ArcGISPro/PythonCondaEnv`.
 
 Oct 27, 2021 - Pro 2.8.3 removed the reliance and existence of the file `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`.  It now depend on env var `CONDA_DEFAULT_ENV` to determine the activate conda env.
 
-Sep 16, 2021 - Perform the following as a patch for Pro 2.8.3
+~~Sep 16, 2021 - Perform the following as a patch for Pro 2.8.3~~
 
 ```commandline
 cd c:\
 git clone https://github.com/kontext-tech/winutils
 ```
 
-Define a system environment variable `HADOOP_HOME` with value `C:\winutils\hadoop-3.3.0` and add to system variable `PATH` the `%HADOOP_HOME%/bin` value.
+~~Define a system environment variable `HADOOP_HOME` with value `C:\winutils\hadoop-3.3.0` and add to system variable `PATH` the `%HADOOP_HOME%/bin` value.~~
 
 ~~NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(~~
 
