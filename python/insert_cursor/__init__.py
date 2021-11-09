@@ -120,7 +120,8 @@ def insert_df(
     :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
     """
     fields = _df_to_fields(df, 1)
-    rows = df.collect()
+    # rows = df.collect()
+    rows = df.toLocalIterator()
     insert_rows(rows, name, fields, ws, spatial_reference, shape_type, shape_format)
 
 
@@ -177,7 +178,8 @@ def insert_df_xy(
     :param spatial_reference: The feature class spatial reference. Default=3857.
     """
     fields = _df_to_fields(df, 2)
-    rows = df.collect()
+    # rows = df.collect()
+    rows = df.toLocalIterator()
     insert_rows_xy(rows, name, fields, ws, spatial_reference)
 
 
@@ -198,7 +200,8 @@ def insert_df_hex(
     assert gridhex_imported, "Install gridhex module from https://github.com/mraad/grid-hex"
     layout = Layout(size)
     fields = _df_to_fields(df, 1)
-    rows = df.collect()
+    # rows = df.collect()
+    rows = df.toLocalIterator()
     with insert_cursor(name, fields, ws=ws, shape_format="") as cursor:
         for nume, *tail in rows:
             coords = Hex.from_nume(nume).to_coords(layout)
