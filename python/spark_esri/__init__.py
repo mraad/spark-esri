@@ -14,6 +14,9 @@ pro_home = arcpy.GetInstallInfo()["InstallDir"]
 pro_lib_dir = os.path.join(pro_home, "Java", "lib")
 pro_runtime_dir = os.path.join(pro_home, "Java", "runtime")
 spark_home = os.path.join(pro_runtime_dir, "spark")
+# Override built-in spark version.
+if "SPARK_HOME" in os.environ:
+    spark_home = os.environ["SPARK_HOME"]
 
 # add spark/py4j libraries from Pro runtime to path for import
 sys.path.insert(0, os.path.join(spark_home, "python", "lib", "pyspark.zip"))
