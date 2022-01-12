@@ -2,7 +2,7 @@
 
 Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
-Dec 16, 2021 - Added check for env var `SPARK_HOME` to override built-in spark.
+Dec 16, 2021 - Added check for env var `SPARK_HOME` to override built-in spark. For example, download [spark-3.1.1-bin-hadoop2.7.tgz](https://archive.apache.org/dist/spark/spark-3.1.1/spark-3.1.1-bin-hadoop2.7.tgz) and set env var `SPARK_HOME` to the extracted folder location.
 
 Oct 30, 2021 - Pro 2.8 relies on the Windows registry to find the active conda environment. The registry key is `HKEY_CURRENT_USER/SOFTWARE/ESRI/ArcGISPro/PythonCondaEnv`. The value of this key is used to set the required os environment variable `PYSPARK_PYTHON` for PySpark to work correctly in a Pro notebook.
 
@@ -12,7 +12,7 @@ As of this writing, the order to detect the active conda environment is as follo
 - look for `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`, in case of an older Pro version.
 - look for `HKEY_CURRENT_USER/SOFTWARE/ESRI/ArcGISPro/PythonCondaEnv`.
 
-Oct 27, 2021 - Pro 2.8.3 removed the reliance and existence of the file `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`.  It now depend on env var `CONDA_DEFAULT_ENV` to determine the activate conda env.
+Oct 27, 2021 - Pro 2.8.3 removed the reliance and existence of the file `%LOCALAPPDATA%/ESRI/conda/envs/proenv.txt`. It now depend on env var `CONDA_DEFAULT_ENV` to determine the activate conda env.
 
 ~~Sep 16, 2021 - Perform the following as a patch for Pro 2.8.3~~
 
@@ -88,8 +88,7 @@ python setup.py install
 
 ![](media/Micropath1.png)
 
-Please note the usage of the [range slider](https://pro.arcgis.com/en/pro-app/help/mapping/range/get-started-with-the-range-slider.htm) on the map to filter the micropaths between
-a user defined hour of day.
+Please note the usage of the [range slider](https://pro.arcgis.com/en/pro-app/help/mapping/range/get-started-with-the-range-slider.htm) on the map to filter the micropaths between a user defined hour of day.
 
 ![](media/Micropath2.png)
 
