@@ -1,25 +1,24 @@
+import arcpy
 import io
 import os
+import pyarrow as pa
+import pyarrow.parquet as pq
 import re
 import tempfile
 from pathlib import Path
+from pyarrow import fs
 from typing import List
 from urllib.parse import urlparse
 
-import arcpy
-
 try:
     import boto3
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-    from pyarrow import fs
 
-    pyarrow_found = True
-    pyarrow_error = None
+    boto3_found = True
+    boto3_error = None
 except ModuleNotFoundError:
-    pyarrow_found = False
-    pyarrow_error = """
-    Please execute 'conda install -c conda-forge boto3=1.17.99' in an ArcGIS Python Command Prompt. 
+    boto3_found = False
+    boto3_error = """
+    Please execute 'conda install -c esri -c conda-forge "boto3>=1.17.99"' in an ArcGIS Python Command Prompt. 
     """
 
 try:
@@ -37,7 +36,7 @@ try:
 except ModuleNotFoundError:
     gcsfs_found = False
     gcsfs_error = """
-    Please execute 'conda install -c conda-forge gcsfs=0.7.1' in an ArcGIS Python Command Prompt.
+    Please execute 'conda install -c conda-forge "gcsfs>=0.7.1"' in an ArcGIS Python Command Prompt.
     """
 
 
@@ -61,51 +60,51 @@ class ExportTool(object):
 
     def getParameterInfo(self):
         tab_view = arcpy.Parameter(
-                name="tab_view",
-                displayName="Input Dataset",
-                direction="Input",
-                datatype="Table View",
-                parameterType="Required")
+            name="tab_view",
+            displayName="Input Dataset",
+            direction="Input",
+            datatype="Table View",
+            parameterType="Required")
 
         pq_name = arcpy.Parameter(
-                name="pq_name",
-                displayName="Output Parquet Folder",
-                direction="Output",
-                datatype="String",
-                parameterType="Required")
+            name="pq_name",
+            displayName="Output Parquet Folder",
+            direction="Output",
+            datatype="String",
+            parameterType="Required")
 
         output_shape = arcpy.Parameter(
-                name="output_shape",
-                displayName="Output Shape",
-                direction="Input",
-                datatype="Boolean",
-                parameterType="Required")
+            name="output_shape",
+            displayName="Output Shape",
+            direction="Input",
+            datatype="Boolean",
+            parameterType="Required")
         output_shape.value = True
 
         shape_format = arcpy.Parameter(
-                name="shape_format",
-                displayName="Shape Format",
-                direction="Input",
-                datatype="GPString",
-                parameterType="Required")
+            name="shape_format",
+            displayName="Shape Format",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Required")
         shape_format.value = "WKB"
         shape_format.filter.type = "ValueList"
         shape_format.filter.list = ["WKT", "WKB", "XY"]
 
         sp_ref = arcpy.Parameter(
-                name="sp_ref",
-                displayName="Output Spatial Reference",
-                direction="Input",
-                datatype="GPSpatialReference",
-                parameterType="Required")
+            name="sp_ref",
+            displayName="Output Spatial Reference",
+            direction="Input",
+            datatype="GPSpatialReference",
+            parameterType="Required")
         sp_ref.value = arcpy.SpatialReference(4326).exportToString()
 
         batch_size = arcpy.Parameter(
-                name="batch_size",
-                displayName="Batch Size",
-                direction="Input",
-                datatype="GPLong",
-                parameterType="Required")
+            name="batch_size",
+            displayName="Batch Size",
+            direction="Input",
+            datatype="GPLong",
+            parameterType="Required")
         batch_size.value = 1_00_000
 
         return [tab_view, pq_name, output_shape, shape_format, sp_ref, batch_size]
@@ -119,17 +118,28 @@ class ExportTool(object):
     def updateMessages(self, parameters):
         return
 
-    def execute(self, parameters, _):
-        if not pyarrow_found:
-            arcpy.AddError(pyarrow_error)
-            return
+    def to_pa_field(self, field):
+        field_type = {
+            'OID': pa.int64(),
+            'Date': pa.timestamp('s'),
+            'Double': pa.float64(),
+            'Integer': pa.int64(),
+            'Single': pa.float32(),
+            'SmallInteger': pa.int16(),
+        }.get(field.type, pa.string())
+        return pa.field(field.name, field_type)
 
+    def execute(self, parameters, _):
         tab_view = parameters[0].valueAsText
         pq_path = parameters[1].value
         py_size = parameters[5].value
 
         description = arcpy.Describe(tab_view)
-        field_names = [field.name for field in description.fields]
+        not_type = ('Blob', 'Raster')
+        field_names = [f.name for f in description.fields if f.type not in not_type]
+        not_type = ('Blob', 'Raster', 'Geometry')
+        schema = pa.schema([self.to_pa_field(f) for f in description.fields if f.type not in not_type])
+
         if hasattr(description, "shapeFieldName"):
             shape_name = description.shapeFieldName
             field_names.remove(shape_name)
@@ -146,9 +156,9 @@ class ExportTool(object):
         if is_s3:
             kwargs = {}
             if "AWS_ACCESS_KEY_ID" in os.environ and "AWS_SECRET_ACCESS_KEY" in os.environ:
-                kwargs['anon'] = False
-                kwargs['key'] = os.getenv("AWS_ACCESS_KEY_ID")
-                kwargs['secret'] = os.getenv("AWS_SECRET_ACCESS_KEY")
+                kwargs["anon"] = False
+                kwargs["key"] = os.getenv("AWS_ACCESS_KEY_ID")
+                kwargs["secret"] = os.getenv("AWS_SECRET_ACCESS_KEY")
             else:
                 arcpy.AddWarning("Missing environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.")
             bucket = sections.hostname
@@ -161,16 +171,19 @@ class ExportTool(object):
                 pq_path += "/"
             client_kwargs = {}
             if "AWS_ENDPOINT_URL" in os.environ:
-                client_kwargs['endpoint_url'] = os.getenv("AWS_ENDPOINT_URL")
+                client_kwargs["endpoint_url"] = os.getenv("AWS_ENDPOINT_URL")
                 put_object = False
             else:
                 put_object = True
-            kwargs['client_kwargs'] = client_kwargs
+            kwargs["client_kwargs"] = client_kwargs
             filesystem = S3FileSystem(**kwargs)
             if filesystem.exists(f"{bucket}/{base_path}"):
                 arcpy.AddError(f"Object {bucket}/{base_path} already exists !")
                 return
             if put_object:
+                if not boto3_found:
+                    arcpy.AddError(boto3_error)
+                    return
                 try:
                     s3 = boto3.client("s3")
                     s3.put_object(Bucket=bucket, Key=base_path)
@@ -200,7 +213,7 @@ class ExportTool(object):
                     py_dict[k].append(v)
                 py_nume += 1
                 if py_nume == py_size:
-                    table = pa.Table.from_pydict(py_dict)
+                    table = pa.Table.from_pydict(py_dict, schema)
                     part_name = f"part-{pq_part:05d}.parquet"
                     where = f"{pq_path}{part_name}" if is_s3 else os.path.join(pq_path, part_name)
                     pq.write_table(table,
@@ -212,7 +225,7 @@ class ExportTool(object):
                     py_nume = 0
                     py_dict = {k: [] for k in field_names}
         if py_nume > 0:
-            table = pa.Table.from_pydict(py_dict)
+            table = pa.Table.from_pydict(py_dict, schema)
             part_name = f"part-{pq_part:05d}.parquet"
             where = f"{pq_path}{part_name}" if is_s3 else os.path.join(pq_path, part_name)
             pq.write_table(table,
@@ -239,80 +252,80 @@ class ImportTool(object):
 
     def getParameterInfo(self):
         out_fc = arcpy.Parameter(
-                name="out_fc",
-                displayName="out_fc",
-                direction="Output",
-                datatype=["Feature Layer", "Table"],
-                parameterType="Derived")
+            name="out_fc",
+            displayName="out_fc",
+            direction="Output",
+            datatype=["Feature Layer", "Table"],
+            parameterType="Derived")
 
         param_path = arcpy.Parameter(
-                name="in_file",
-                displayName="Parquet Folder",
-                direction="Input",
-                datatype=["DEFolder", "String"],
-                parameterType="Required")
+            name="in_file",
+            displayName="Parquet Folder",
+            direction="Input",
+            datatype=["DEFolder", "String"],
+            parameterType="Required")
         # param_path.value = os.path.join("Z:", os.sep)
 
         param_name = arcpy.Parameter(
-                name="in_name",
-                displayName="Output Layer Name",
-                direction="Input",
-                datatype="GPString",
-                parameterType="Required")
+            name="in_name",
+            displayName="Output Layer Name",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Required")
 
         sp_ref = arcpy.Parameter(
-                name="in_sp_ref",
-                displayName="Spatial Reference",
-                direction="Input",
-                datatype="GPSpatialReference",
-                parameterType="Required")
+            name="in_sp_ref",
+            displayName="Spatial Reference",
+            direction="Input",
+            datatype="GPSpatialReference",
+            parameterType="Required")
         sp_ref.value = arcpy.SpatialReference(4326).exportToString()
 
         field_x = arcpy.Parameter(
-                name="field_x",
-                displayName="X Column",
-                direction="Input",
-                datatype="GPString",
-                parameterType="Optional")
+            name="field_x",
+            displayName="X Column",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Optional")
 
         field_y = arcpy.Parameter(
-                name="field_y",
-                displayName="Y Column",
-                direction="Input",
-                datatype="GPString",
-                parameterType="Optional")
+            name="field_y",
+            displayName="Y Column",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Optional")
 
         field_wkb = arcpy.Parameter(
-                name="field_wkb",
-                displayName="WKB Column",
-                direction="Input",
-                datatype="GPString",
-                parameterType="Optional")
+            name="field_wkb",
+            displayName="WKB Column",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Optional")
 
         field_col = arcpy.Parameter(
-                name="field_col",
-                displayName="RegExp of columns to import",
-                direction="Input",
-                datatype="GPString",
-                parameterType="Required")
+            name="field_col",
+            displayName="RegExp of columns to import",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Required")
         field_col.value = ".+"
 
         geom_type = arcpy.Parameter(
-                name="geom_type",
-                displayName="Geometry Type",
-                direction="Input",
-                datatype="GPString",
-                parameterType="Required")
+            name="geom_type",
+            displayName="Geometry Type",
+            direction="Input",
+            datatype="GPString",
+            parameterType="Required")
         geom_type.filter.type = "ValueList"
         geom_type.filter.list = ["POINT", "POLYLINE", "POLYGON", "MULTIPOINT"]
         geom_type.value = "POINT"
 
         in_memory = arcpy.Parameter(
-                name="in_memory",
-                displayName="Use Memory Workspace",
-                direction="Input",
-                datatype="Boolean",
-                parameterType="Optional")
+            name="in_memory",
+            displayName="Use Memory Workspace",
+            direction="Input",
+            datatype="Boolean",
+            parameterType="Optional")
         in_memory.value = False
 
         return [out_fc,
@@ -354,10 +367,6 @@ class ImportTool(object):
         return arr
 
     def execute(self, parameters, _):
-        if not pyarrow_found:
-            arcpy.AddError(pyarrow_error)
-            return
-
         p_path = parameters[1].valueAsText
         p_name = parameters[2].value
         p_x = parameters[3].value
@@ -369,7 +378,7 @@ class ImportTool(object):
         p_memory = parameters[9].value
 
         last_symbology = None
-        project = arcpy.mp.ArcGISProject('current')
+        project = arcpy.mp.ArcGISProject("current")
         for l in project.activeMap.listLayers():
             if l.name == p_name:
                 last_symbology = os.path.join(tempfile.mkdtemp(), p_name)
@@ -396,7 +405,7 @@ class ImportTool(object):
                 if "AWS_ENDPOINT_URL" in os.environ:  # Using MinIO
                     is_minio = True
                     endpoint_url = os.getenv("AWS_ENDPOINT_URL")
-                    client_kwargs['endpoint_url'] = endpoint_url
+                    client_kwargs["endpoint_url"] = endpoint_url
                     arcpy.AddWarning(f"Using environment variable AWS_ENDPOINT_URL ({endpoint_url})")
                 if s3fs_found:
                     self.filesystem = S3FileSystem(anon=False,
@@ -405,9 +414,12 @@ class ImportTool(object):
                                                    client_kwargs=client_kwargs
                                                    )
                 else:
+                    if not boto3_found:
+                        arcpy.AddError(boto3_error)
+                        return
                     if is_minio:
-                        client_kwargs['config'] = boto3.session.Config(signature_version='s3v4')
-                    self.s3 = boto3.resource('s3', **client_kwargs)
+                        client_kwargs["config"] = boto3.session.Config(signature_version="s3v4")
+                    self.s3 = boto3.resource("s3", **client_kwargs)
             else:
                 # Case when Pro is running in AWS
                 self.filesystem = S3FileSystem()
@@ -419,7 +431,7 @@ class ImportTool(object):
             if p.is_file():
                 arcpy.AddError(f"{p_path} is not a folder. Make sure all the files in {p_path} start with 'part-'.")
                 return
-            parts = list(p.glob('part-*'))
+            parts = list(p.glob("part-*"))
 
         if len(parts) == 0:
             arcpy.AddError(f"Cannot find files in '{p_path}' that start with 'part-'.")
@@ -432,11 +444,11 @@ class ImportTool(object):
 
         is_feature_class = True
         if p_geom is not None:
-            ap_fields = ['SHAPE@WKB']
+            ap_fields = ["SHAPE@WKB"]
             pq_fields = [p_geom]
             p_expr = f"{p_expr}|{p_geom}"
         elif p_x is not None and p_y is not None:
-            ap_fields = ['SHAPE@X', 'SHAPE@Y']
+            ap_fields = ["SHAPE@X", "SHAPE@Y"]
             pq_fields = [p_x, p_y]
             p_expr = f"{p_expr}|{p_x}|{p_y}"
         else:
@@ -446,12 +458,12 @@ class ImportTool(object):
 
         if is_feature_class:
             arcpy.management.CreateFeatureclass(
-                    ws,
-                    p_name,
-                    p_type,
-                    spatial_reference=p_sp_ref,
-                    has_m="DISABLED",
-                    has_z="DISABLED")
+                ws,
+                p_name,
+                p_type,
+                spatial_reference=p_sp_ref,
+                has_m="DISABLED",
+                has_z="DISABLED")
         else:
             arcpy.management.CreateTable(ws, p_name)
 
@@ -476,13 +488,13 @@ class ImportTool(object):
                 arcpy.AddMessage(f"col name={f_name} type={f_type}")
                 if f_name not in [p_x, p_y, p_geom]:
                     a_type = {
-                        'int32': 'INTEGER',
-                        'int64': 'LONG',
-                        'float': 'DOUBLE',
-                        'doubl': 'DOUBLE',
-                        'times': 'DATE',
-                        'decim': 'DOUBLE'
-                    }.get(f_type, 'TEXT')
+                        "int32": "INTEGER",
+                        "int64": "LONG",
+                        "float": "DOUBLE",
+                        "doubl": "DOUBLE",
+                        "times": "DATE",
+                        "decim": "DOUBLE"
+                    }.get(f_type, "TEXT")
                     arcpy.management.AddField(fc, a_name, a_type,
                                               field_alias=f_name,
                                               field_is_nullable="NULLABLE",
