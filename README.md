@@ -1,4 +1,4 @@
-# Spark ESRI
+# Spark Esri
 
 Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
@@ -41,16 +41,6 @@ If you do not wish to use Pro's built-in Spark, you can download and install Spa
 Start a `Python Command Prompt`:
 
 ![](media/Command.png)
-
-```
-pip install fsspec==2021.8.1 boto3==1.18.35 s3fs==0.4.2 pyarrow==1.0.1
-conda install --yes -c esri -c conda-forge -c default^
-    "numba=0.53.*"^
-    "pandas=1.2.*"^
-    "untangle=1.1.*"^
-    "pyodbc=4.0.*"^
-    "gcsfs=0.7.*"        
-```
 
 **Note**: You _might_ need to add proxy settings to `.condarc` located in `C:\Program Files\ArcGIS\Pro\bin\Python`.
 
