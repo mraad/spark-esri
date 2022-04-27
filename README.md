@@ -1,8 +1,12 @@
-# Spark ESRI
+# Spark Esri
 
 Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) within a [Jupyter notebook within ArcGIS Pro](https://pro.arcgis.com/en/pro-app/arcpy/get-started/pro-notebooks.htm).
 
-Dec 16, 2021 - Added check for env var `SPARK_HOME` to override built-in spark. For example, download [spark-3.1.1-bin-hadoop2.7.tgz](https://archive.apache.org/dist/spark/spark-3.1.1/spark-3.1.1-bin-hadoop2.7.tgz) and set env var `SPARK_HOME` to the extracted folder location.
+## Notes
+
+April 12, 2022 - Running PySpark in Pro 2.9 requires the `PYSPARK_PYTHON` environment variable to be set. It should point to the python.exe executable of your active conda environment, e.g., `C:\Users\%USERNAME%\AppData\Local\ESRI\conda\envs\spark_esri\python.exe`. Defining `CONDA_DEFAULT_ENV` is neither sufficient and nor necesary.
+
+Dec 16, 2021 - Added check for env var `SPARK_HOME` to override built-in spark. See instructions below.
 
 Oct 30, 2021 - Pro 2.8 relies on the Windows registry to find the active conda environment. The registry key is `HKEY_CURRENT_USER/SOFTWARE/ESRI/ArcGISPro/PythonCondaEnv`. The value of this key is used to set the required os environment variable `PYSPARK_PYTHON` for PySpark to work correctly in a Pro notebook.
 
@@ -24,6 +28,13 @@ git clone https://github.com/kontext-tech/winutils
 ~~Define a system environment variable `HADOOP_HOME` with value `C:\winutils\hadoop-3.3.0` and add to system variable `PATH` the `%HADOOP_HOME%/bin` value.~~
 
 ~~NOTE: This works in Pro 2.6 ONLY. There is a small "issue" with Pro 2.7 and pyarrow. The folks in Redlands have a fix that will be in 2.8 :-(~~
+
+## Installation
+
+### Install Spark (Optional).
+
+If you do not wish to use Pro's built-in Spark, you can download and install Spark 3.x separately. For example, download [spark-3.2.1-bin-hadoop3.2.tgz](https://www.apache.org/dyn/closer.lua/spark/spark-3.2.1/spark-3.2.1-bin-hadoop3.2.tgz) and set the environment variable `SPARK_HOME` to the folder where you extracted the archive. It's best to avoid spaces in the folder path.
+
 
 ### Create a new Pro Conda Environment.
 
