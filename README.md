@@ -71,10 +71,10 @@ Optional:
 
 ```
 pip install fsspec==2021.8.1 boto3==1.18.35 s3fs==0.4.2 pyarrow==1.0.1
+
 conda install --yes -c esri -c conda-forge -c default^
     "numba=0.53.*"^
     "pandas=1.2.*"^
-    "untangle=1.1.*"^
     "pyodbc=4.0.*"^
     "gcsfs=0.7.*"        
 ```

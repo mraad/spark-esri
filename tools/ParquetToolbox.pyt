@@ -1,7 +1,20 @@
+#
+# proswap arcgispro-py3
+# conda remove --yes --all --name sparkgeo
+# conda create --yes --name sparkgeo --clone arcgispro-py3
+# proswap sparkgeo
+# pip install boto3 s3fs gcsfs
+#
+# 2022-09-06: set env var SETUPTOOLS_USE_DISTUTILS=stdlib
+#
+# https://arrow.apache.org/docs/python/filesystems.html
+# https://cloud.google.com/docs/authentication/application-default-credentials
+#
 import arcpy
 import io
 import os
 import pyarrow as pa
+import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 import re
 import tempfile
@@ -22,7 +35,7 @@ except ModuleNotFoundError:
     """
 
 try:
-    from s3fs import S3FileSystem  # conda install -c conda-forge s3fs=0.5.1 or pip install s3fs==0.5.1
+    from s3fs import S3FileSystem  # conda install -c esri -c conda-forge "s3fs>=0.5.1"
 
     s3fs_found = True
 except ModuleNotFoundError:
@@ -36,7 +49,7 @@ try:
 except ModuleNotFoundError:
     gcsfs_found = False
     gcsfs_error = """
-    Please execute 'conda install -c conda-forge "gcsfs>=0.7.1"' in an ArcGIS Python Command Prompt.
+    Please execute 'conda install -c esri -c conda-forge "gcsfs>=0.7.1"' in an ArcGIS Python Command Prompt.
     """
 
 
@@ -52,7 +65,7 @@ class ExportTool(object):
         self.label = "Export To Parquet"
         self.description = """
         Export a feature class to a parquet folder.
-        Parquet folder can be on local file system on on S3.
+        Parquet folder can be on local file system on an S3 bucket.
         The files in the folder will be named 'part-00001','part-00002',etc...
         """
         self.canRunInBackground = True
@@ -72,6 +85,7 @@ class ExportTool(object):
             direction="Output",
             datatype="String",
             parameterType="Required")
+        pq_name.value = os.path.join("Z:", os.sep, "delete_me.prq")
 
         output_shape = arcpy.Parameter(
             name="output_shape",
@@ -91,13 +105,13 @@ class ExportTool(object):
         shape_format.filter.type = "ValueList"
         shape_format.filter.list = ["WKT", "WKB", "XY"]
 
-        sp_ref = arcpy.Parameter(
-            name="sp_ref",
-            displayName="Output Spatial Reference",
-            direction="Input",
-            datatype="GPSpatialReference",
-            parameterType="Required")
-        sp_ref.value = arcpy.SpatialReference(4326).exportToString()
+        # sp_ref = arcpy.Parameter(
+        #     name="sp_ref",
+        #     displayName="Output Spatial Reference",
+        #     direction="Input",
+        #     datatype="GPSpatialReference",
+        #     parameterType="Required")
+        # sp_ref.value = arcpy.SpatialReference(4326).exportToString()
 
         batch_size = arcpy.Parameter(
             name="batch_size",
@@ -105,9 +119,9 @@ class ExportTool(object):
             direction="Input",
             datatype="GPLong",
             parameterType="Required")
-        batch_size.value = 1_00_000
+        batch_size.value = 100_000
 
-        return [tab_view, pq_name, output_shape, shape_format, sp_ref, batch_size]
+        return [tab_view, pq_name, output_shape, shape_format, batch_size]
 
     def isLicensed(self):
         return True
@@ -126,30 +140,38 @@ class ExportTool(object):
             'Integer': pa.int64(),
             'Single': pa.float32(),
             'SmallInteger': pa.int16(),
+            'Blob': pa.large_binary(),
         }.get(field.type, pa.string())
         return pa.field(field.name, field_type)
 
     def execute(self, parameters, _):
         tab_view = parameters[0].valueAsText
         pq_path = parameters[1].value
-        py_size = parameters[5].value
+        shape_format = parameters[3].value
+        py_size = parameters[4].value
 
         description = arcpy.Describe(tab_view)
-        not_type = ('Blob', 'Raster')
+        not_type = ('Raster',)
         field_names = [f.name for f in description.fields if f.type not in not_type]
-        not_type = ('Blob', 'Raster', 'Geometry')
+        not_type = ('Raster', 'Geometry')
         schema = pa.schema([self.to_pa_field(f) for f in description.fields if f.type not in not_type])
 
         if hasattr(description, "shapeFieldName"):
             shape_name = description.shapeFieldName
             field_names.remove(shape_name)
             if parameters[2].value:
-                shape_format = parameters[3].value
                 if shape_format == "XY":
-                    field_names.append(shape_name + "@X")
-                    field_names.append(shape_name + "@Y")
+                    shape_x = shape_name + "@X"
+                    shape_y = shape_name + "@Y"
+                    field_names.append(shape_x)
+                    field_names.append(shape_y)
+                    schema = schema \
+                        .append(pa.field(shape_x, pa.float64())) \
+                        .append(pa.field(shape_y, pa.float64()))
                 else:
-                    field_names.append(shape_name + "@" + shape_format)
+                    shape_name = shape_name + "@" + shape_format
+                    field_names.append(shape_name)
+                    schema = schema.append(pa.field(shape_name, pa.binary()))
 
         sections = urlparse(pq_path)
         is_s3 = sections.scheme == "s3"
@@ -197,12 +219,26 @@ class ExportTool(object):
         pq_part = 0
         py_nume = 0
         py_dict = {k: [] for k in field_names}
+        sp_ref = arcpy.env.outputCoordinateSystem
+        if sp_ref is None:
+            sp_ref = description.spatialReference
+        extent = arcpy.env.extent
+        clear_selection = False
+        if extent is not None:
+            clear_selection = True
+            extent = extent.projectAs(description.spatialReference)
+            polygon = arcpy.Polygon(arcpy.Array(
+                [getattr(extent, _) for _ in ('lowerLeft', 'upperLeft', 'upperRight', 'lowerRight', 'lowerLeft')]),
+                description.spatialReference
+            )
+            arcpy.management.SelectLayerByLocation(tab_view, 'INTERSECT', polygon)
         result = arcpy.management.GetCount(tab_view)
         max_range = int(result.getOutput(0))
-        rep_range = max(1, int(max_range / 100))
+        rep_range = max(1, max_range // 100)
+        arcpy.AddMessage(f"Exporting {max_range} feature(s).")
         arcpy.SetProgressor("step", "Exporting...", 0, max_range, rep_range)
-        sp_ref = parameters[4].value
         arcpy.env.autoCancelling = False
+        # TODO - Check M and Z output options in env tab.
         with arcpy.da.SearchCursor(tab_view, field_names, spatial_reference=sp_ref) as cursor:
             for pos, row in enumerate(cursor):
                 if pos % rep_range == 0:
@@ -224,7 +260,7 @@ class ExportTool(object):
                     pq_part += 1
                     py_nume = 0
                     py_dict = {k: [] for k in field_names}
-        if py_nume > 0:
+        if py_nume > 0 and not arcpy.env.isCancelled:
             table = pa.Table.from_pydict(py_dict, schema)
             part_name = f"part-{pq_part:05d}.parquet"
             where = f"{pq_path}{part_name}" if is_s3 else os.path.join(pq_path, part_name)
@@ -233,7 +269,8 @@ class ExportTool(object):
                            filesystem=filesystem,
                            version="2.0",
                            flavor="spark")
-
+        if clear_selection:
+            arcpy.management.SelectLayerByAttribute(tab_view, 'CLEAR_SELECTION')
         arcpy.ResetProgressor()
 
 
@@ -317,7 +354,10 @@ class ImportTool(object):
             datatype="GPString",
             parameterType="Required")
         geom_type.filter.type = "ValueList"
-        geom_type.filter.list = ["POINT", "POLYLINE", "POLYGON", "MULTIPOINT"]
+        geom_type.filter.list = ["POINT", "POINT Z", "POINT M",
+                                 "POLYLINE", "POLYLINE Z", "POLYLINE M",
+                                 "POLYGON", "POLYGON Z", "POLYGON M",
+                                 "MULTIPOINT", "MULTIPOINT Z", "MULTIPOINT M"]
         geom_type.value = "POINT"
 
         in_memory = arcpy.Parameter(
@@ -348,10 +388,13 @@ class ImportTool(object):
     def updateMessages(self, parameters):
         return
 
-    def read_table(self, pq_path: str):
+    def read_table(self, pq_path: str) -> pa.lib.Table:
         if self.filesystem:
-            table = pq.read_table(pq_path, filesystem=self.filesystem)
+            arcpy.AddMessage(f"Reading {pq_path} using FS...")
+            dataset = ds.dataset(pq_path, filesystem=self.filesystem)
+            table = dataset.to_table()
         else:
+            # arcpy.AddMessage(f"Reading {pq_path} using Boto3")
             buffer = io.BytesIO()
             s3_object = self.s3.Object(self.bucket, pq_path)
             s3_object.download_fileobj(buffer)
@@ -394,7 +437,7 @@ class ImportTool(object):
             if "GOOGLE_APPLICATION_CREDENTIALS" not in os.environ:
                 arcpy.AddError("Environment variable GOOGLE_APPLICATION_CREDENTIALS is missing.")
                 return
-            self.filesystem = gcsfs.GCSFileSystem()
+            self.filesystem = gcsfs.GCSFileSystem(token=os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
             self.bucket = sections.hostname
             parts = self.filesystem.glob(f"{self.bucket}/{base_path}/part-*")
         elif sections.scheme == "s3":
@@ -423,7 +466,6 @@ class ImportTool(object):
             else:
                 # Case when Pro is running in AWS
                 self.filesystem = S3FileSystem()
-            # parts = self.filesystem.glob(f"{self.bucket}/{base_path}/part-*")
             parts = self.glob(base_path)
         else:
             self.filesystem = fs.LocalFileSystem()
@@ -457,13 +499,27 @@ class ImportTool(object):
             is_feature_class = False
 
         if is_feature_class:
+            geom_type, has_m, has_z = {
+                "POINT": ("POINT", "DISABLED", "DISABLED"),
+                "POINT M": ("POINT", "ENABLED", "DISABLED"),
+                "POINT Z": ("POINT", "DISABLED", "ENABLED"),
+                "POLYLINE": ("POLYLINE", "DISABLED", "DISABLED"),
+                "POLYLINE M": ("POLYLINE", "ENABLED", "DISABLED"),
+                "POLYLINE Z": ("POLYLINE", "DISABLED", "ENABLED"),
+                "POLYGON": ("POLYGON", "DISABLED", "DISABLED"),
+                "POLYGON M": ("POLYGON", "ENABLED", "DISABLED"),
+                "POLYGON Z": ("POLYGON", "DISABLED", "ENABLED"),
+                "MULTIPOINT": ("MULTIPOINT", "DISABLED", "DISABLED"),
+                "MULTIPOINT M": ("MULTIPOINT", "ENABLED", "DISABLED"),
+                "MULTIPOINT Z": ("MULTIPOINT", "DISABLED", "ENABLED")
+            }[p_type]
             arcpy.management.CreateFeatureclass(
                 ws,
                 p_name,
-                p_type,
+                geom_type,
                 spatial_reference=p_sp_ref,
-                has_m="DISABLED",
-                has_z="DISABLED")
+                has_m=has_m,
+                has_z=has_z)
         else:
             arcpy.management.CreateTable(ws, p_name)
 
@@ -471,7 +527,6 @@ class ImportTool(object):
         prog = re.compile(r"""^\d""")
         expr = re.compile(p_expr)
         object_id = 1
-        # table = pq.read_table(parts[0], filesystem=self.filesystem)
         table = self.read_table(parts[0])
         schema = table.schema
         for field in schema:
@@ -503,12 +558,13 @@ class ImportTool(object):
                     pq_fields.append(f_name)
 
         arcpy.env.autoCancelling = False
+        arcpy.SetProgressor("step", "Importing...", 0, len(parts), 1)
+        nume = 0
         with arcpy.da.InsertCursor(fc, ap_fields) as cursor:
-            nume = 0
-            for part in parts:
+            for pos, part in enumerate(parts):
+                arcpy.SetProgressorPosition(pos)
                 if arcpy.env.isCancelled:
                     break
-                # table = pq.read_table(part, filesystem=self.filesystem)
                 table = self.read_table(part)
                 arcpy.AddMessage(f"{part} rows={table.num_rows}")
                 pydict = table.to_pydict()
@@ -520,12 +576,13 @@ class ImportTool(object):
                         arcpy.SetProgressorLabel(f"Imported {nume} Features...")
                         if arcpy.env.isCancelled:
                             break
+        if not arcpy.env.isCancelled:
             arcpy.SetProgressorLabel(f"Imported {nume} Features.")
-        parameters[0].value = fc
-        if last_symbology:
-            parameters[0].symbology = f"{last_symbology}.lyrx"
-        else:
-            symbology = Path(__file__).parent / f"{p_name}.lyrx"
-            if symbology.exists():
-                parameters[0].symbology = str(symbology)
+            parameters[0].value = fc
+            if last_symbology:
+                parameters[0].symbology = f"{last_symbology}.lyrx"
+            else:
+                symbology = Path(__file__).parent / f"{p_name}.lyrx"
+                if symbology.exists():
+                    parameters[0].symbology = str(symbology)
         arcpy.ResetProgressor()

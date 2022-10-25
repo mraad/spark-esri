@@ -190,7 +190,7 @@ def insert_df_hex(
         ws: str = "memory") -> None:
     """Create ephemeral polygon feature class from given dataframe.
 
-    Note - It is assume that the first field is the hex nume value.
+    Note - It is assumed that the first field is the hex nume value.
 
     :param df: A dataframe.
     :param name: The name of the feature class.

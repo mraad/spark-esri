@@ -69,8 +69,10 @@ def spark_start(config: Dict = {}) -> SparkSession:
     _set_pyspark_python()
     #
     # these need to be reset on every run or pyspark will think the Java gateway is still up and running
-    os.environ.unsetenv("PYSPARK_GATEWAY_PORT")
-    os.environ.unsetenv("PYSPARK_GATEWAY_SECRET")
+    if "PYSPARK_GATEWAY_PORT" in os.environ:
+        del os.environ["PYSPARK_GATEWAY_PORT"]
+    if "PYSPARK_GATEWAY_SECRET" in os.environ:
+        del os.environ["PYSPARK_GATEWAY_SECRET"]
     SparkContext._jvm = None
     SparkContext._gateway = None
 
