@@ -4,7 +4,9 @@ Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) wi
 
 ## Notes
 
-April 12, 2022 - Running PySpark in Pro 2.9 requires the `PYSPARK_PYTHON` environment variable to be set. It should point to the python.exe executable of your active conda environment, e.g., `C:\Users\%USERNAME%\AppData\Local\ESRI\conda\envs\spark_esri\python.exe`. Defining `CONDA_DEFAULT_ENV` is neither sufficient and nor necesary.
+Oct 25, 2022 - Updated to support upcoming Pro 3.1. See SparkGeo2 notebook for integration with Apache Arrow :-)
+
+Apr 12, 2022 - Running PySpark in Pro 2.9 requires the `PYSPARK_PYTHON` environment variable to be set. It should point to the python.exe executable of your active conda environment, e.g., `C:\Users\%USERNAME%\AppData\Local\ESRI\conda\envs\spark_esri\python.exe`. Defining `CONDA_DEFAULT_ENV` is neither sufficient and nor necesary.
 
 Dec 16, 2021 - Added check for env var `SPARK_HOME` to override built-in spark. See instructions below.
 
