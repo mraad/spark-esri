@@ -1,6 +1,7 @@
 #
 # Code borrowed and modified from https://www.esri.com/arcgis-blog/products/arcgis-pro/health/use-proximity-tracing-to-identify-possible-contact-events/
 #
+import glob
 import os
 import subprocess
 import sys
@@ -8,7 +9,6 @@ import winreg
 from typing import Dict
 
 import arcpy
-import glob
 
 pro_home = arcpy.GetInstallInfo()["InstallDir"]
 pro_lib_dir = os.path.join(pro_home, "Java", "lib")
@@ -59,6 +59,9 @@ def _set_pyspark_python() -> None:
 
 
 def spark_start(config: Dict = {}) -> SparkSession:
+    if SparkContext._gateway is not None:
+        return SparkSession.builder.getOrCreate()
+
     os.environ["JAVA_HOME"] = os.path.join(pro_runtime_dir, "jre")
     if "HADOOP_HOME" not in os.environ:
         hadoop_home = os.path.join(pro_runtime_dir, "hadoop")
@@ -107,13 +110,13 @@ def spark_start(config: Dict = {}) -> SparkSession:
     gateway = launch_gateway(conf=conf, popen_kwargs=popen_kwargs)
     sc = SparkContext(gateway=gateway)
     spark = SparkSession(sc)
-    # Kick start the spark engine.
+    # Kick-start the spark engine.
     spark.sql("select 1").collect()
     return spark
 
 
 def spark_stop():
-    if SparkContext._gateway:
+    if SparkContext._gateway is not None:
         spark = SparkSession.builder.getOrCreate()
         gateway = spark._sc._gateway
         spark.stop()

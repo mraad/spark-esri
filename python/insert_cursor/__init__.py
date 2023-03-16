@@ -1,11 +1,10 @@
+import os
 from typing import List, Tuple, Iterable
 
-import os
 import arcpy
-
 from pyspark.sql.dataframe import DataFrame
+from pyspark.sql.types import DateType, TimestampType
 from pyspark.sql.types import Row, IntegerType, LongType, FloatType, DoubleType, DecimalType
-from pyspark.sql.types import DateType, TimestampType, StringType
 
 try:
     # https://github.com/mraad/grid-hex
@@ -40,7 +39,8 @@ def _insert_cursor(
         fields: List[Tuple[str, str]],
         ws: str,
         spatial_reference: int,
-        shape_type: str):
+        shape_type: str
+):
     fc = os.path.join(ws, name)
     arcpy.management.Delete(fc)
     sp_ref = arcpy.SpatialReference(spatial_reference)
@@ -59,7 +59,8 @@ def insert_cursor(
         ws: str = "memory",
         spatial_reference: int = 3857,
         shape_type: str = "POLYGON",
-        shape_format: str = "WKB"):
+        shape_format: str = "WKB"
+):
     """Create and return an ArcPy InsertCursor.
 
     Note - it is assumed that the first data field is the shape field.
@@ -76,13 +77,15 @@ def insert_cursor(
     return _insert_cursor(cols, name, fields, ws, spatial_reference, shape_type)
 
 
-def insert_rows(rows: Iterable[Row],
-                name: str,
-                fields: List[Tuple[str, str]],
-                ws: str = "memory",
-                spatial_reference: int = 3857,
-                shape_type: str = "POLYGON",
-                shape_format: str = "WKB") -> None:
+def insert_rows(
+        rows: Iterable[Row],
+        name: str,
+        fields: List[Tuple[str, str]],
+        ws: str = "memory",
+        spatial_reference: int = 3857,
+        shape_type: str = "POLYGON",
+        shape_format: str = "WKB"
+) -> None:
     """Create an ephemeral feature class given collected rows.
 
     Note - it is assumed that the first data field is the shape field.
@@ -107,7 +110,8 @@ def insert_df(
         ws: str = "memory",
         spatial_reference: int = 3857,
         shape_type: str = "POLYGON",
-        shape_format: str = "WKB") -> None:
+        shape_format: str = "WKB"
+) -> None:
     """Create an ephemeral feature class given a dataframe.
 
     Note - it is assumed that the first data field is the shape field.
@@ -129,7 +133,8 @@ def insert_cursor_xy(
         name: str,
         fields: List[Tuple[str, str]],
         ws: str = "memory",
-        spatial_reference: int = 3857):
+        spatial_reference: int = 3857
+):
     """Create and return an ArcPy InsertCursor for Point.
 
     Note - it is assumed than the first two data fields are the x and y values.
@@ -149,7 +154,8 @@ def insert_rows_xy(
         name: str,
         fields: List[Tuple[str, str]],
         ws: str = "memory",
-        spatial_reference: int = 3857) -> None:
+        spatial_reference: int = 3857
+) -> None:
     """Create ephemeral point feature class given collected rows.
 
     :param rows: The rows to insert.
@@ -167,10 +173,11 @@ def insert_df_xy(
         df: DataFrame,
         name: str,
         ws: str = "memory",
-        spatial_reference: int = 3857) -> None:
+        spatial_reference: int = 3857
+) -> None:
     """Create ephemeral point feature class from given dataframe.
 
-    Note - It is assume that the first two data fields are the point x/y values.
+    Note - It is assumed that the first two data fields are the point x/y values.
 
     :param df: A dataframe.
     :param name: The name of the feature class.
@@ -187,7 +194,8 @@ def insert_df_hex(
         df: DataFrame,
         name: str,
         size: float,
-        ws: str = "memory") -> None:
+        ws: str = "memory"
+) -> None:
     """Create ephemeral polygon feature class from given dataframe.
 
     Note - It is assumed that the first field is the hex nume value.
@@ -206,3 +214,44 @@ def insert_df_hex(
         for nume, *tail in rows:
             coords = Hex.from_nume(nume).to_coords(layout)
             cursor.insertRow((coords, *tail))
+
+
+def insert_df_progress(
+        df: DataFrame,
+        name: str,
+        ws: str = "memory",
+        spatial_reference: int = 3857,
+        shape_type: str = "POLYGON",
+        shape_format: str = "WKB"
+) -> None:
+    """Create an ephemeral feature class given a dataframe and update pro progress bar.
+
+    Note - it is assumed that the first column is the shape field.
+
+    :param df: A dataframe.
+    :param name: The name of the feature class.
+    :param ws: The output workspace. Default="memory".
+    :param spatial_reference: The spatial reference id. Default=3857.
+    :param shape_type: The feature class shape type (POINT,POLYGON,POLYLINE,MULTIPOINT). Default="POLYGON".
+    :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
+    """
+    arcpy.env.autoCancelling = False
+    fields = _df_to_fields(df, 1)
+    rows = df.collect()
+    if not arcpy.env.isCancelled:
+        max_range = len(rows)
+        rep_range = max(1, max_range // 1000)
+        arcpy.AddMessage(f"Creating {max_range} feature(s).")
+        arcpy.SetProgressor("step", "Generating Features...", 0, max_range, rep_range)
+        # insert_rows(rows, name, fields, ws, spatial_reference, shape_type, shape_format)
+        cols = [f"Shape@{shape_format}"]
+        with _insert_cursor(cols, name, fields, ws, spatial_reference, shape_type) as cursor:
+            for pos, row in enumerate(rows):
+                if pos % rep_range == 0:
+                    # Update the progress bar.
+                    arcpy.SetProgressorPosition(pos)
+                    # Check for user cancel.
+                    if arcpy.env.isCancelled:
+                        break
+                cursor.insertRow(row)
+        arcpy.ResetProgressor()
