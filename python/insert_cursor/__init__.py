@@ -15,7 +15,10 @@ except ImportError:
     gridhex_imported = False
 
 
-def _df_to_fields(df: DataFrame, index: int) -> List[Tuple[str, str]]:
+def _df_to_fields(
+        df: DataFrame,
+        index: int
+) -> List[Tuple[str, str]]:
     def yield_field():
         for field in df.schema.fields[index:]:
             field_name = field.name
@@ -26,7 +29,7 @@ def _df_to_fields(df: DataFrame, index: int) -> List[Tuple[str, str]]:
                 DoubleType: "DOUBLE",
                 DecimalType: "DOUBLE",
                 DateType: "DATE",
-                TimestampType: "LONG"
+                TimestampType: "DATE"
             }.get(type(field.dataType), "STRING")
             yield field_name, arcpy_type
 
@@ -223,7 +226,7 @@ def insert_df_progress(
         spatial_reference: int = 3857,
         shape_type: str = "POLYGON",
         shape_format: str = "WKB"
-) -> None:
+) -> str:
     """Create an ephemeral feature class given a dataframe and update pro progress bar.
 
     Note - it is assumed that the first column is the shape field.
@@ -234,16 +237,17 @@ def insert_df_progress(
     :param spatial_reference: The spatial reference id. Default=3857.
     :param shape_type: The feature class shape type (POINT,POLYGON,POLYLINE,MULTIPOINT). Default="POLYGON".
     :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
+    :return The name of the feature class. None if the user clicked the cancel button.
     """
     arcpy.env.autoCancelling = False
     fields = _df_to_fields(df, 1)
     rows = df.collect()
+    ws_name = os.path.join(ws, name)
     if not arcpy.env.isCancelled:
         max_range = len(rows)
         rep_range = max(1, max_range // 1000)
         arcpy.AddMessage(f"Creating {max_range} feature(s).")
         arcpy.SetProgressor("step", "Generating Features...", 0, max_range, rep_range)
-        # insert_rows(rows, name, fields, ws, spatial_reference, shape_type, shape_format)
         cols = [f"Shape@{shape_format}"]
         with _insert_cursor(cols, name, fields, ws, spatial_reference, shape_type) as cursor:
             for pos, row in enumerate(rows):
@@ -255,3 +259,6 @@ def insert_df_progress(
                         break
                 cursor.insertRow(row)
         arcpy.ResetProgressor()
+    else:
+        ws_name = None
+    return ws_name
