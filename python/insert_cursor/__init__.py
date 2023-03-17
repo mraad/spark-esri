@@ -246,8 +246,7 @@ def insert_df_progress(
     if not arcpy.env.isCancelled:
         max_range = len(rows)
         rep_range = max(1, max_range // 1000)
-        arcpy.AddMessage(f"Creating {max_range} feature(s).")
-        arcpy.SetProgressor("step", "Generating Features...", 0, max_range, rep_range)
+        arcpy.SetProgressor("step", f"Inserting {max_range} feature(s)...", 0, max_range, rep_range)
         cols = [f"Shape@{shape_format}"]
         with _insert_cursor(cols, name, fields, ws, spatial_reference, shape_type) as cursor:
             for pos, row in enumerate(rows):
