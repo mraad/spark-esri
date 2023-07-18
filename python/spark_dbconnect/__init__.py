@@ -43,7 +43,7 @@ def spark_start(config: Dict = {}) -> SparkSession:
     gateway = launch_gateway(conf=conf, popen_kwargs=popen_kwargs)
     sc = SparkContext(gateway=gateway)
     spark = SparkSession(sc)
-    # Kick start the spark engine.
+    # Kick-start the spark engine.
     spark.sql("select 1").collect()
     return spark
 

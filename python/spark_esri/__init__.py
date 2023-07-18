@@ -32,7 +32,9 @@ SparkContext._gateway = None
 
 def _set_pyspark_python() -> None:
     if "CONDA_DEFAULT_ENV" in os.environ:
-        os.environ["PYSPARK_PYTHON"] = os.path.join(os.getenv("CONDA_DEFAULT_ENV"), "python.exe")
+        python_exe = os.path.join(os.getenv("CONDA_DEFAULT_ENV"), "python.exe")
+        if os.path.exists(python_exe):
+            os.environ["PYSPARK_PYTHON"] = python_exe
 
     if "PYSPARK_PYTHON" not in os.environ and "LOCALAPPDATA" in os.environ:
         # Pre Pro 2.8
@@ -79,26 +81,28 @@ def spark_start(config: Dict = {}) -> SparkSession:
     SparkContext._jvm = None
     SparkContext._gateway = None
 
-    spark_jars = [
-        # os.path.join(pro_lib_dir, "spark-desktop-engine.jar"),
-        # os.path.join(pro_lib_dir, "arcobjects.jar")
-    ]
-    spark_jars = ",".join(spark_jars)
+    # spark_jars = [
+    #     # os.path.join(pro_lib_dir, "spark-desktop-engine.jar"),
+    #     # os.path.join(pro_lib_dir, "arcobjects.jar")
+    # ]
+    # spark_jars = ",".join(spark_jars)
 
     conf = SparkConf()
     conf.set("spark.master", "local[*]")
     conf.set("spark.driver.host", "127.0.0.1")  # Added per suggestion from ctoledo-img-com-br :-)
+    conf.set("spark.driver.memory", "32G")
+    conf.set("spark.executor.memory", "32G")
     conf.set("spark.ui.enabled", False)
     conf.set("spark.ui.showConsoleProgress", False)
     conf.set("spark.sql.execution.arrow.enabled", True)
     conf.set("spark.sql.execution.arrow.pyspark.enabled", True)
     conf.set("spark.sql.catalogImplementation", "in-memory")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-    conf.set("spark.jars", spark_jars)
+    # conf.set("spark.jars", spark_jars)
     # Add/Update user defined spark configurations.
     for k, v in config.items():
-        if k == "spark.jars":
-            v = spark_jars + "," + v
+        # if k == "spark.jars":
+        #     v = spark_jars + "," + v
         conf.set(k, v)
 
     # we have to manage the py4j gateway ourselves so that we can control the JVM process
