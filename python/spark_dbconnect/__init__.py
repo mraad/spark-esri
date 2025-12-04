@@ -9,7 +9,7 @@ import arcpy
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 
-from spark.java_gateway import launch_gateway
+from pyspark.java_gateway import launch_gateway
 
 SparkContext._gateway = None
 

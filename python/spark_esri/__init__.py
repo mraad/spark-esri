@@ -25,7 +25,7 @@ sys.path.insert(0, py4j_zip)
 
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
-from spark.java_gateway import launch_gateway
+from pyspark.java_gateway import launch_gateway
 
 SparkContext._gateway = None
 
