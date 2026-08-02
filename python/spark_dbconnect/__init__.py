@@ -9,7 +9,7 @@ import arcpy
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 
-from spark.java_gateway import launch_gateway
+from pyspark.java_gateway import launch_gateway
 
 SparkContext._gateway = None
 
@@ -22,15 +22,16 @@ def spark_start(config: Dict = {}) -> SparkSession:
     conf = SparkConf()
     conf.set("spark.ui.enabled", False)
     conf.set("spark.ui.showConsoleProgress", False)
-    conf.set("spark.sql.execution.arrow.enabled", True)
+    conf.set("spark.sql.execution.arrow.pyspark.enabled", True)
     conf.set("spark.sql.catalogImplementation", "in-memory")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
     for k, v in config.items():
         conf.set(k, v)
     #
     # these need to be reset on every run or pyspark will think the Java gateway is still up and running
-    os.environ.unsetenv("PYSPARK_GATEWAY_PORT")
-    os.environ.unsetenv("PYSPARK_GATEWAY_SECRET")
+    # os.environ.unsetenv() does not exist on os._Environ - it is an AttributeError on py3.13.
+    os.environ.pop("PYSPARK_GATEWAY_PORT", None)
+    os.environ.pop("PYSPARK_GATEWAY_SECRET", None)
     SparkContext._jvm = None
     SparkContext._gateway = None
 
