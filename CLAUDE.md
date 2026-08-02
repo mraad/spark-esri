@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A Python package (`spark_esri`) that lets Apache Spark run inside a Jupyter notebook embedded in ArcGIS Pro, by launching Spark against the JVM/Java runtime bundled with Pro instead of a standalone Spark install. The rest of the repo is a collection of Jupyter notebooks that demonstrate spatial analytics on top of it (spatial binning, H3 hexbin aggregation, micro-pathing, virtual gate crossings, taxi-trip-duration ML, remote execution on Databricks, etc.), plus an ArcGIS Python Toolbox for Parquet import/export.
 
-This is **not** a typical app repo — there is no linter or CI config. Development happens interactively inside ArcGIS Pro's bundled Jupyter environment (or Jupyter Lab for the Databricks-connect notebooks). There is a headless smoke-test suite under `tests/` (see below), but it only covers the six notebooks that need neither a live Pro map nor external data; everything else is still validated by running the notebook by hand.
+This is **not** a typical app repo — there is no linter or CI config. Development happens interactively inside ArcGIS Pro's bundled Jupyter environment (or Jupyter Lab for the Databricks-connect notebooks). There is a headless smoke-test suite under `tests/` (see below) covering the six notebooks that need neither a live Pro map nor external data, plus the whole `insert_cursor` package; everything else is still validated by running the notebook by hand.
 
 ## Runtime environment constraints
 
@@ -57,12 +57,18 @@ python tests\run_all.py            # or: python tests\run_all.py t_qr
 
 `SPARK_HOME` is already set persistently on this machine (see above), so no per-invocation setup is needed. `run_all.py` echoes the resolved `SPARK_HOME` on its first line — if that shows Pro's bundled Spark, every UDF test will fail with SPARK-53759.
 
-Plain scripts, no Jupyter. `run_all.py` runs each `t_*.py` in its own subprocess (a Spark session is a process-global singleton that can't be cleanly rebuilt in-process) and reports PASS / SKIP / FAIL, exiting non-zero only on FAIL. Exit code `77` means SKIP — used when an optional dep (`numba`, `h3`) is missing. Both are now installed, so a clean run is 6 passed / 0 skipped / 0 failed.
+Plain scripts, no Jupyter. `run_all.py` runs each `t_*.py` in its own subprocess (a Spark session is a process-global singleton that can't be cleanly rebuilt in-process) and reports PASS / SKIP / FAIL, exiting non-zero only on FAIL. Exit code `77` means SKIP — used when an optional dep is missing. `numba`, `h3` and `gridhex` are all installed on this machine, so a clean run is **8 passed / 0 skipped / 0 failed**.
+
+`gridhex` is GitHub-only (not on PyPI) and is wired up from a local clone via a `.pth` file in site-packages (`gridhex-dev.pth` → `<clone>/src/main/python`) rather than `pip install -e`. On a mapped/shared drive pip rewrites the drive letter to UNC and dies with `WinError 3`, and legacy `setup.py develop` leaves an `egg-link` plus an **empty** `easy-install.pth`, so the package stays unimportable while pip reports success. Python imports from such drives fine — only pip's normalization breaks. See the README for the command.
+
+`_harness` puts `python/` on `sys.path` **at import time**, not inside `start()`, so every test can `import insert_cursor` / `import spark_esri` at module scope and still run standalone (`python tests\t_insert_cursor.py`), not only via `run_all.py`.
+
+**`arcpy` does not need an open ArcGIS Pro project.** `t_insert_cursor.py` exercises the entire `insert_cursor` package headlessly — `CreateFeatureclass`/`InsertCursor`/`SearchCursor` against the `memory` workspace, and the progressor APIs, all work in standalone arcpy at ArcInfo level. Only `arcpy.mp` and named map layers require a live project. Always open `SearchCursor` under `with`: an unreleased cursor holds a schema lock and makes a later `Delete` fail intermittently.
 
 `t_spark_version.py` is the one that matters after a Pro or Spark upgrade: it exercises `rdd.map()`, `@udf` and `@pandas_udf`, so it fails loudly if SPARK-53759 regresses, and it unit-tests `_needs_spark53759_fix` against the full affected/fixed version matrix.
 
 ## Working with notebooks
 
-The `tests/` suite covers only the six notebooks needing neither a live map nor external data. For everything else, verifying a change to `python/spark_esri` or `python/insert_cursor` still means running the notebook end-to-end inside ArcGIS Pro and confirming features render on the map — 13 notebooks need a live layer (`Broadcast`, `Gates`, `Slicks39N`, `Predictions`), and 8 need a remote cluster, the proprietary `sparkgeo`/`esri_spark` jars, MinIO, a GPU, or IPython magics.
+The `tests/` suite covers the six notebooks needing neither a live map nor external data, plus `insert_cursor` directly. For everything else, verifying a change still means running the notebook end-to-end inside ArcGIS Pro and confirming features render on the map — 13 notebooks need a live layer (`Broadcast`, `Gates`, `Slicks39N`, `Predictions`), and 8 need a remote cluster, the proprietary `sparkgeo`/`esri_spark` jars, MinIO, a GPU, or IPython magics. Note the blocker there is reading a *named map layer*, not `insert_cursor` itself — writing the results back out is covered by `t_insert_cursor.py`.
 
 Several notebooks carry pre-existing latent bugs that are *not* Spark-4 related and remain unfixed: missing `import math` / `import arcpy`, an undefined bare `sql()` in the cells written for a Zeppelin-style pre-injected environment, and `SparkJoinOnGPU.ipynb` joining a view `v2` that is never created. `H3.ipynb` / `SparkGeo*.ipynb` / `sparkgeo_in_pro.ipynb` also pin `sparkgeo` jars built for Spark 3.0–3.5, which are binary-incompatible with Spark 4.

@@ -183,11 +183,33 @@ obvious from the first line of output.
 unit-tests the affected/fixed version matrix.
 
 Tests whose optional dependency is missing report `SKIP` rather than failing
-(`t_qr`, `t_spark_pandas`, `t_mercator` need `numba`; `t_h3_pandas_udf` needs `h3`).
-Row counts default to 50k; set `SPARK_ESRI_TEST_ROWS` to run at notebook scale.
+(`t_qr`, `t_spark_pandas`, `t_mercator` need `numba`; `t_h3_pandas_udf` needs `h3`;
+`t_insert_df_hex` needs [`gridhex`](https://github.com/mraad/grid-hex), which is not on
+PyPI). Row counts default to 50k; set `SPARK_ESRI_TEST_ROWS` to run at notebook scale.
 
-The remaining notebooks are not covered because they need a live Pro map layer
-(`Broadcast`, `Gates`, `Slicks39N`, `Predictions`), a GeoAnalytics licence, a remote
+### Enabling `t_insert_df_hex` from a local grid-hex checkout
+
+`gridhex` has to come from a clone. Point the env at it with a `.pth` file, which is what
+an editable install writes anyway:
+
+```commandline
+echo <path-to>\grid-hex\src\main\python > %CONDA_PREFIX%\Lib\site-packages\gridhex-dev.pth
+```
+
+Prefer this over `pip install -e` when the clone lives on a mapped/shared drive: pip
+rewrites a drive letter to its UNC form (`\\host\share\...`) and can fail with
+`WinError 3`, and the legacy `setup.py develop` path can leave a `gridhex.egg-link`
+behind while writing an **empty** `easy-install.pth`, so the package silently stays
+unimportable. Python itself imports from such drives fine — it is only pip's path
+normalization that breaks. Delete the `.pth` to undo.
+
+`t_insert_cursor.py` covers the whole `insert_cursor` package — `insert_df`, `insert_df_xy`,
+`insert_df_progress`, the low-level cursor helpers and the Spark-to-Esri field type mapping.
+It needs **no open ArcGIS Pro project**: it writes to the `memory` workspace, which works in
+standalone arcpy. Only `arcpy.mp` and named map layers require a live project.
+
+The remaining notebooks are not covered because they read a live Pro map layer
+(`Broadcast`, `Gates`, `Slicks39N`, `Predictions`), or need a GeoAnalytics licence, a remote
 Databricks cluster, the proprietary `sparkgeo`/`esri_spark` jars, MinIO, or a GPU.
 
 ### [Spatial Binning](spark_esri.ipynb) Notebook
