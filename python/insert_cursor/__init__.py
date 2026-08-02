@@ -236,25 +236,34 @@ def insert_df_progress(
     :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
     :return The name of the feature class. None if the user clicked the cancel button.
     """
+    # Take over cancellation handling for the duration of the insert - the loop below polls
+    # arcpy.env.isCancelled itself. Restore the caller's setting on the way out, otherwise
+    # every later arcpy call in this process silently runs with auto-cancel disabled.
+    previous_auto_cancelling = arcpy.env.autoCancelling
     arcpy.env.autoCancelling = False
-    fields = _df_to_fields(df, 1)
-    rows = df.collect()
-    ws_name = os.path.join(ws, name)
-    if not arcpy.env.isCancelled:
-        max_range = len(rows)
-        rep_range = max(1, max_range // 1000)
-        arcpy.SetProgressor("step", f"Inserting {max_range} feature(s)...", 0, max_range, rep_range)
-        cols = [f"Shape@{shape_format}"]
-        with _insert_cursor(cols, name, fields, ws, spatial_reference, shape_type) as cursor:
-            for pos, row in enumerate(rows):
-                if pos % rep_range == 0:
-                    # Update the progress bar.
-                    arcpy.SetProgressorPosition(pos)
-                    # Check for user cancel.
-                    if arcpy.env.isCancelled:
-                        break
-                cursor.insertRow(row)
-        arcpy.ResetProgressor()
-    else:
-        ws_name = None
-    return ws_name
+    try:
+        fields = _df_to_fields(df, 1)
+        rows = df.collect()
+        ws_name = os.path.join(ws, name)
+        if not arcpy.env.isCancelled:
+            max_range = len(rows)
+            rep_range = max(1, max_range // 1000)
+            arcpy.SetProgressor("step", f"Inserting {max_range} feature(s)...", 0, max_range, rep_range)
+            cols = [f"Shape@{shape_format}"]
+            try:
+                with _insert_cursor(cols, name, fields, ws, spatial_reference, shape_type) as cursor:
+                    for pos, row in enumerate(rows):
+                        if pos % rep_range == 0:
+                            # Update the progress bar.
+                            arcpy.SetProgressorPosition(pos)
+                            # Check for user cancel.
+                            if arcpy.env.isCancelled:
+                                break
+                        cursor.insertRow(row)
+            finally:
+                arcpy.ResetProgressor()
+        else:
+            ws_name = None
+        return ws_name
+    finally:
+        arcpy.env.autoCancelling = previous_auto_cancelling

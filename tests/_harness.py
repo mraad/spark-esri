@@ -21,6 +21,13 @@ ROWS = int(os.environ.get("SPARK_ESRI_TEST_ROWS", "50000"))
 
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# Put the repo's packages on sys.path at import time, not inside start(), so a test can
+# `import insert_cursor` / `import spark_esri` at module scope and still be runnable
+# standalone (`python tests\t_insert_cursor.py`) rather than only via run_all.py.
+_PYTHON_DIR = os.path.join(_REPO_ROOT, "python")
+if _PYTHON_DIR not in sys.path:
+    sys.path.insert(0, _PYTHON_DIR)
+
 
 def repo_root() -> str:
     """Absolute path of the repo checkout - never hard code Z:\\GWorkspace\\spark_esri."""
@@ -46,7 +53,6 @@ def start(config=None):
     Several notebooks were written for an environment where 'spark' and a bare 'sql()'
     are pre-injected globals; returning sql here is what lets those cells port verbatim.
     """
-    sys.path.insert(0, os.path.join(_REPO_ROOT, "python"))
     from spark_esri import spark_start
 
     merged = {"spark.driver.memory": "4G", "spark.executor.memory": "4G"}
