@@ -189,19 +189,32 @@ PyPI). Row counts default to 50k; set `SPARK_ESRI_TEST_ROWS` to run at notebook 
 
 ### Enabling `t_insert_df_hex` from a local grid-hex checkout
 
-`gridhex` has to come from a clone. Point the env at it with a `.pth` file, which is what
-an editable install writes anyway:
+`gridhex` has to come from a clone. A normal install works, including when the clone lives
+on a mapped or shared drive:
+
+```commandline
+pip install <path-to>\grid-hex
+```
+
+**`pip install -e` on a mapped/shared drive does not work**, so use the plain install above
+unless you specifically need edits to the clone picked up without reinstalling. Two distinct
+failures show up there:
+
+- With `--use-pep517`, pip rewrites the drive letter to its UNC form (`\\host\share\...`)
+  and dies with `WinError 3`.
+- Without it, the legacy `setup.py develop` path reports `Successfully installed` but leaves
+  a `gridhex.egg-link` alongside an **empty** `easy-install.pth` — so the package is still
+  unimportable despite pip claiming success.
+
+Python itself imports from such drives fine; only pip's path normalization breaks. If you do
+need editable behaviour, write the `.pth` an editable install would have written:
 
 ```commandline
 echo <path-to>\grid-hex\src\main\python > %CONDA_PREFIX%\Lib\site-packages\gridhex-dev.pth
 ```
 
-Prefer this over `pip install -e` when the clone lives on a mapped/shared drive: pip
-rewrites a drive letter to its UNC form (`\\host\share\...`) and can fail with
-`WinError 3`, and the legacy `setup.py develop` path can leave a `gridhex.egg-link`
-behind while writing an **empty** `easy-install.pth`, so the package silently stays
-unimportable. Python itself imports from such drives fine — it is only pip's path
-normalization that breaks. Delete the `.pth` to undo.
+That keeps the import bound to the clone, so it breaks if the drive is not mounted. Delete
+the `.pth` to undo.
 
 `t_insert_cursor.py` covers the whole `insert_cursor` package — `insert_df`, `insert_df_xy`,
 `insert_df_progress`, the low-level cursor helpers and the Spark-to-Esri field type mapping.
