@@ -57,7 +57,9 @@ python tests\run_all.py            # or: python tests\run_all.py t_qr
 
 `SPARK_HOME` is already set persistently on this machine (see above), so no per-invocation setup is needed. `run_all.py` echoes the resolved `SPARK_HOME` on its first line — if that shows Pro's bundled Spark, every UDF test will fail with SPARK-53759.
 
-Plain scripts, no Jupyter. `run_all.py` runs each `t_*.py` in its own subprocess (a Spark session is a process-global singleton that can't be cleanly rebuilt in-process) and reports PASS / SKIP / FAIL, exiting non-zero only on FAIL. Exit code `77` means SKIP — used when an optional dep is missing. `numba` and `h3` are installed; `gridhex` is GitHub-only (not on PyPI), so `t_insert_df_hex` normally SKIPs and a clean run is 7 passed / 1 skipped / 0 failed.
+Plain scripts, no Jupyter. `run_all.py` runs each `t_*.py` in its own subprocess (a Spark session is a process-global singleton that can't be cleanly rebuilt in-process) and reports PASS / SKIP / FAIL, exiting non-zero only on FAIL. Exit code `77` means SKIP — used when an optional dep is missing. `numba`, `h3` and `gridhex` are all installed on this machine, so a clean run is **8 passed / 0 skipped / 0 failed**.
+
+`gridhex` is GitHub-only (not on PyPI) and is wired up from a local clone via a `.pth` file in site-packages (`gridhex-dev.pth` → `<clone>/src/main/python`) rather than `pip install -e`. On a mapped/shared drive pip rewrites the drive letter to UNC and dies with `WinError 3`, and legacy `setup.py develop` leaves an `egg-link` plus an **empty** `easy-install.pth`, so the package stays unimportable while pip reports success. Python imports from such drives fine — only pip's normalization breaks. See the README for the command.
 
 `_harness` puts `python/` on `sys.path` **at import time**, not inside `start()`, so every test can `import insert_cursor` / `import spark_esri` at module scope and still run standalone (`python tests\t_insert_cursor.py`), not only via `run_all.py`.
 
