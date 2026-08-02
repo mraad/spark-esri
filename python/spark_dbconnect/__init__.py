@@ -16,7 +16,6 @@ SparkContext._gateway = None
 
 def spark_start(config: Dict = {}) -> SparkSession:
     pro_home = arcpy.GetInstallInfo()["InstallDir"]
-    # pro_lib_dir = os.path.join(pro_home, "Java", "lib")
     pro_runtime_dir = os.path.join(pro_home, "Java", "runtime")
     os.environ["HADOOP_HOME"] = os.path.join(pro_runtime_dir, "hadoop")
     conf = SparkConf()

@@ -47,7 +47,7 @@ try:
     check("no null x", sql("select count(*) c from v0 where x is null").collect()[0].c, 0)
 
     # Known fixed points.
-    known = spark.sql("select 0.0D z, 180.0D lon, 0.0D lat") \
+    known = spark.sql("select 180.0D lon, 0.0D lat") \
         .withColumn("x", pdLonToX("lon")).withColumn("y", pdLatToY("lat")).collect()[0]
     report("lonToX(180)", known.x)
     assert abs(known.x - half) < 1e-6, f"lonToX(180) should be {half}, got {known.x}"

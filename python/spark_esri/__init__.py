@@ -16,7 +16,6 @@ import arcpy
 __version__ = "0.12"
 
 pro_home = arcpy.GetInstallInfo()["InstallDir"]
-pro_lib_dir = os.path.join(pro_home, "Java", "lib")
 pro_runtime_dir = os.path.join(pro_home, "Java", "runtime")
 pro_spark_home = os.path.join(pro_runtime_dir, "spark")
 
@@ -306,12 +305,6 @@ def spark_start(config: Dict = {}, probe_udf: bool = False) -> SparkSession:
     SparkContext._jvm = None
     SparkContext._gateway = None
 
-    # spark_jars = [
-    #     # os.path.join(pro_lib_dir, "spark-desktop-engine.jar"),
-    #     # os.path.join(pro_lib_dir, "arcobjects.jar")
-    # ]
-    # spark_jars = ",".join(spark_jars)
-
     conf = SparkConf()
     conf.set("spark.master", "local[*]")
     conf.set("spark.driver.host", "127.0.0.1")  # Added per suggestion from ctoledo-img-com-br :-)
@@ -323,13 +316,10 @@ def spark_start(config: Dict = {}, probe_udf: bool = False) -> SparkSession:
     conf.set("spark.sql.execution.arrow.pyspark.fallback.enabled", True)
     conf.set("spark.sql.catalogImplementation", "in-memory")
     conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-    # conf.set("spark.jars", spark_jars)
     for k, v in SPARK3_SQL_COMPAT.items():
         conf.set(k, v)
     # Add/Update user defined spark configurations - these must come last so the user wins.
     for k, v in config.items():
-        # if k == "spark.jars":
-        #     v = spark_jars + "," + v
         conf.set(k, v)
 
     # we have to manage the py4j gateway ourselves so that we can control the JVM process
