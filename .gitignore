@@ -13,3 +13,4 @@ python/spark_esri.egg-info
 tools/*.lyrx
 .virtual_documents
 __pycache__
+.DS_Store
