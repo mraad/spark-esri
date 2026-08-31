@@ -18,8 +18,11 @@ reviews:
     auto_pause_after_reviewed_commits: 2
 
     # Deliberately narrow — only titles that mean "not ready to look at yet".
+    # These are unanchored, case-insensitive substring matches, so a bare "WIP"
+    # would also swallow "WIPER support"; keep every entry delimited.
     # "docs" is intentionally NOT in this list: prose is where review keeps finding
     # real defects (stale versions, commands that do not run).
     ignore_title_keywords:
-      - "WIP"
+      - "[WIP]"
+      - "WIP:"
       - "DO NOT MERGE"
