@@ -1,0 +1,25 @@
+# CodeRabbit configuration — https://docs.coderabbit.ai/reference/configuration
+#
+# Review limits are per-developer rolling allowances, and the hourly refill shrinks as
+# 7-day usage climbs (Pro starts at 5/hour and drops toward 1/hour under heavy use).
+# Every run spends one: opening a PR, each automatic re-review after a push, and each
+# manual "@coderabbitai review". A branch that takes three fix commits therefore costs
+# four reviews, not one. These settings cut that repeat cost without giving up the
+# first-pass coverage, which is the part that actually finds things.
+#
+# Not set here, because the defaults are already what we want:
+#   reviews.auto_review.drafts  = false  -> draft PRs are not auto-reviewed, so opening
+#                                           as draft and marking ready costs one review
+#                                           instead of one per push.
+reviews:
+  auto_review:
+    # Default 5. Pauses automatic re-review after this many reviewed commits on a PR;
+    # resume deliberately with an "@coderabbitai review" comment.
+    auto_pause_after_reviewed_commits: 2
+
+    # Deliberately narrow — only titles that mean "not ready to look at yet".
+    # "docs" is intentionally NOT in this list: prose is where review keeps finding
+    # real defects (stale versions, commands that do not run).
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
