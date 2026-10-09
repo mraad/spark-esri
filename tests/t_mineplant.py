@@ -7,9 +7,10 @@ resolved relative to the checkout / a temp dir here so the test is portable.
 import os
 import tempfile
 
-from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
+from _harness import check, report, repo_root, start, stop  # first: puts python/ on sys.path
 
-from _harness import check, report, repo_root, start, stop
+import spark_esri  # noqa: F401 - puts Pro's bundled pyspark on sys.path when it is not pip installed
+from pyspark.sql.types import DoubleType, IntegerType, StringType, StructField, StructType
 
 schema = StructType(
     [

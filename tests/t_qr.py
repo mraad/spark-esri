@@ -11,10 +11,12 @@ from typing import List
 
 import numpy as np
 import pandas as pd
+
+from _harness import ROWS, check, report, require, start, stop  # first: puts python/ on sys.path
+
+import spark_esri  # noqa: F401 - puts Pro's bundled pyspark on sys.path when it is not pip installed
 from pyspark.sql.functions import col, explode, lit, pandas_udf, rand, udf
 from pyspark.sql.types import ArrayType, LongType
-
-from _harness import ROWS, check, report, require, start, stop
 
 numba = require("numba", "Run 'pip install numba' to enable this test.")
 njit = numba.njit
