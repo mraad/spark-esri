@@ -4,10 +4,12 @@ Ported from the h3 v3 API used by the notebook to the v4 API:
     h3.geo_to_h3(lat, lon, res)  ->  h3.latlng_to_cell(lat, lng, res)
 """
 import pandas as pd
+
+from _harness import ROWS, check, report, require, start, stop  # first: puts python/ on sys.path
+
+import spark_esri  # noqa: F401 - puts Pro's bundled pyspark on sys.path when it is not pip installed
 from pyspark.sql.functions import avg, pandas_udf
 from pyspark.sql.types import StringType
-
-from _harness import ROWS, check, report, require, start, stop
 
 h3 = require("h3", "Run 'pip install h3' to enable this test.")
 

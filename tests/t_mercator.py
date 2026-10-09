@@ -8,10 +8,12 @@ import math
 
 import numpy as np
 import pandas as pd
+
+from _harness import ROWS, check, report, start, stop  # first: puts python/ on sys.path
+
+import spark_esri  # noqa: F401 - puts Pro's bundled pyspark on sys.path when it is not pip installed
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import DoubleType
-
-from _harness import ROWS, check, report, start, stop
 
 
 @pandas_udf(returnType=DoubleType())

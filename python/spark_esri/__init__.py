@@ -13,7 +13,7 @@ from typing import Dict, Optional, Tuple
 
 import arcpy
 
-__version__ = "0.12"
+__version__ = "0.13"
 
 pro_home = arcpy.GetInstallInfo()["InstallDir"]
 pro_runtime_dir = os.path.join(pro_home, "Java", "runtime")
@@ -39,13 +39,35 @@ def _is_spark_home(path: str) -> bool:
         os.path.isdir(os.path.join(path, "jars"))
 
 
+def _auto_spark_home() -> str:
+    """Spark home to use when SPARK_HOME is not usable.
+
+    A pip installed pyspark that is importable from the active env wins over the Spark that
+    ships with Pro: its python code is what gets imported regardless, so pairing it with Pro's
+    jars is a guaranteed version mismatch. A pip pyspark carries its own jars and launcher.
+    """
+    origin = _module_origin("pyspark")
+    if origin is not None:
+        home = os.path.dirname(origin)
+        if _is_spark_home(home):
+            return home
+    return pro_spark_home
+
+
 def _resolve_spark_home() -> str:
     """SPARK_HOME wins over the Spark that ships with Pro."""
     if "SPARK_HOME" not in os.environ:
-        return pro_spark_home
+        return _auto_spark_home()
 
     given = os.environ["SPARK_HOME"]
     home = _clean_path(given)
+    if not os.path.exists(home):
+        # Typically a 'setx SPARK_HOME %CONDA_PREFIX%\...' that pinned the expanded path of a
+        # conda env which has since been deleted or recreated under another name.
+        fallback = _auto_spark_home()
+        print(f"***WARNING*** SPARK_HOME='{given}' does not exist (a deleted or renamed conda env?). "
+              f"Using '{fallback}' instead - update or unset SPARK_HOME to silence this.")
+        return fallback
     if not _is_spark_home(home):
         # Be forgiving - a pip install is rooted at <site-packages>\pyspark, users
         # tend to point SPARK_HOME at the env root or at site-packages instead.
@@ -59,8 +81,8 @@ def _resolve_spark_home() -> str:
         raise RuntimeError(
             f"SPARK_HOME='{given}' is not a Spark installation - expecting "
             f"'bin\\spark-submit.cmd' and a 'jars' folder below it.\n"
-            f"Unset SPARK_HOME to fall back on the Spark that ships with ArcGIS Pro "
-            f"('{pro_spark_home}').")
+            f"Unset SPARK_HOME to fall back on a pip installed pyspark in the active env, "
+            f"else on the Spark that ships with ArcGIS Pro ('{pro_spark_home}').")
     return home
 
 
@@ -125,6 +147,7 @@ def _bootstrap_sys_path(home: str) -> None:
     importlib.invalidate_caches()
 
 
+_spark_home_env = os.environ.get("SPARK_HOME")  # as seen at import time
 spark_home = _resolve_spark_home()
 _bootstrap_sys_path(spark_home)
 
@@ -269,8 +292,13 @@ def spark_start(config: Dict = {}, probe_udf: bool = False) -> SparkSession:
     if SparkContext._gateway is not None:
         return SparkSession.builder.getOrCreate()
 
-    current = _clean_path(os.environ["SPARK_HOME"]) if "SPARK_HOME" in os.environ else pro_spark_home
-    if os.path.normcase(current) != os.path.normcase(spark_home):
+    # Compare against the raw value seen at import - spark_start() below overwrites SPARK_HOME
+    # with the resolved home, so a second spark_start() in the same kernel compares equal too.
+    def _norm(path: Optional[str]) -> str:
+        return os.path.normcase(_clean_path(path)) if path else ""
+
+    current = os.environ.get("SPARK_HOME")
+    if _norm(current) not in (_norm(_spark_home_env), _norm(spark_home)):
         print(f"***WARNING*** SPARK_HOME changed to '{current}' after spark_esri was imported. "
               f"Still using '{spark_home}' - restart the notebook kernel to pick up the change.")
 

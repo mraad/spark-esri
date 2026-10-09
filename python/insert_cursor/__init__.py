@@ -1,9 +1,11 @@
+import datetime
 import os
-from typing import List, Tuple, Iterable
+from typing import List, Tuple, Iterable, Iterator
 
 import arcpy
 from pyspark.sql.dataframe import DataFrame
-from pyspark.sql.types import DateType, TimestampType
+from pyspark.sql.functions import col, expr
+from pyspark.sql.types import DateType, TimestampType, TimestampNTZType
 from pyspark.sql.types import Row, IntegerType, LongType, FloatType, DoubleType, DecimalType
 
 try:
@@ -29,11 +31,42 @@ def _df_to_fields(
                 DoubleType: "DOUBLE",
                 DecimalType: "DOUBLE",
                 DateType: "DATE",
-                TimestampType: "DATE"
+                TimestampType: "DATE",
+                TimestampNTZType: "DATE"
             }.get(type(field.dataType), "STRING")
             yield field_name, arcpy_type
 
     return [f for f in yield_field()]
+
+
+_EPOCH = datetime.datetime(1970, 1, 1)
+
+
+def _local_rows(df: DataFrame) -> Iterator[tuple]:
+    """df.toLocalIterator(), minus pyspark's crash on pre-1970 timestamps on Windows.
+
+    pyspark turns a timestamp into a datetime with datetime.fromtimestamp(), which on Windows
+    raises OSError [Errno 22] for any negative epoch - i.e. any date before 1970, common in
+    GIS data. So timestamp columns are shipped as wall-clock microseconds since 1970 instead
+    and rebuilt here with timedelta arithmetic, which has no such limit.
+
+    A TimestampType value comes out as its wall clock in spark.sql.session.timeZone, the
+    same as toPandas() and as a DataFrame built from pandas expects on the way in. The row
+    path used the OS time zone instead; the two only differ if the session zone was changed.
+    """
+    fields = df.schema.fields
+    ts = {i for i, f in enumerate(fields) if isinstance(f.dataType, (TimestampType, TimestampNTZType))}
+    if not ts:
+        yield from (tuple(row) for row in df.toLocalIterator())
+        return
+    # Positional names - immune to duplicate or awkward column names.
+    names = [f"_c{i}" for i in range(len(fields))]
+    cols = [expr(f"timestampdiff(MICROSECOND, timestamp_ntz'1970-01-01 00:00:00', "
+                 f"cast({name} as timestamp_ntz))").alias(name) if i in ts else col(name)
+            for i, name in enumerate(names)]
+    for row in df.toDF(*names).select(*cols).toLocalIterator():
+        yield tuple(_EPOCH + datetime.timedelta(microseconds=v) if i in ts and v is not None else v
+                    for i, v in enumerate(row))
 
 
 def _insert_cursor(
@@ -127,7 +160,7 @@ def insert_df(
     :param shape_format: The shape format (WKB, WKT, ''). Default="WKB".
     """
     fields = _df_to_fields(df, 1)
-    rows = df.toLocalIterator()
+    rows = _local_rows(df)
     insert_rows(rows, name, fields, ws, spatial_reference, shape_type, shape_format)
 
 
@@ -187,7 +220,7 @@ def insert_df_xy(
     :param spatial_reference: The feature class spatial reference. Default=3857.
     """
     fields = _df_to_fields(df, 2)
-    rows = df.toLocalIterator()
+    rows = _local_rows(df)
     insert_rows_xy(rows, name, fields, ws, spatial_reference)
 
 
@@ -209,7 +242,7 @@ def insert_df_hex(
     assert gridhex_imported, "Install gridhex module from https://github.com/mraad/grid-hex"
     layout = Layout(size)
     fields = _df_to_fields(df, 1)
-    rows = df.toLocalIterator()
+    rows = _local_rows(df)
     with insert_cursor(name, fields, ws=ws, shape_format="") as cursor:
         for nume, *tail in rows:
             coords = Hex.from_nume(nume).to_coords(layout)
@@ -243,7 +276,7 @@ def insert_df_progress(
     arcpy.env.autoCancelling = False
     try:
         fields = _df_to_fields(df, 1)
-        rows = df.collect()
+        rows = list(_local_rows(df))
         ws_name = os.path.join(ws, name)
         if not arcpy.env.isCancelled:
             max_range = len(rows)

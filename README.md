@@ -4,6 +4,11 @@ Project to demonstrate the usage of [Apache Spark](https://spark.apache.org/) wi
 
 ## Notes
 
+Oct 9, 2026 - Verified on Pro 3.7.2 (still bundling Spark 4.1.1) with pyspark 4.1.3, including an end-to-end test on real data (`tests/t_northsea.py`). Two fixes:
+
+- **`SPARK_HOME` is no longer needed for a pip-installed pyspark.** When it is unset, a pyspark that is importable from the active env (and so carries its own jars) now wins over Pro's bundled Spark. Before, its python code was imported anyway but launched against Pro's 4.1.1 jars. A `SPARK_HOME` that points at a folder which no longer exists, e.g. one `setx` pinned to a since-deleted conda env, now prints a warning and falls back instead of making `import spark_esri` fail.
+- **Dates before 1970 no longer crash `insert_df*`.** On Windows, pyspark turns timestamps into Python `datetime`s with `datetime.fromtimestamp()`, which raises `OSError [Errno 22]` for any date before 1970. `insert_cursor` now converts timestamp columns itself. `TimestampNTZType` columns now map to `DATE` instead of `STRING`. Creating a DataFrame *from* Python rows that contain pre-1970 datetimes fails the same way (`OverflowError: mktime argument out of range`), which is a pyspark limitation. Build such DataFrames from a pandas DataFrame instead, since the Arrow path is not affected.
+
 Aug 2, 2026 - Updated for Pro 3.7, which bundles **Spark 4.1.1** on Python 3.13. Three things changed:
 
 - **Python UDFs are broken on Pro's bundled Spark.** See [Known issue: python UDFs on Windows](#known-issue-python-udfs-on-windows-spark-53759) below - you need `SPARK_HOME` pointing at Spark >= 4.1.2.
@@ -68,6 +73,15 @@ Pro's bundled Spark.
 
 ```commandline
 pip install "pyspark>=4.1.2"
+```
+
+That is all you need. With `SPARK_HOME` unset, `spark_esri` uses the pyspark installed in the
+active env, jars included, and only falls back on Pro's bundled Spark when there is none. This
+keeps working across `proswap`. Restart the notebook kernel afterwards.
+
+Setting `SPARK_HOME` explicitly still works, and it is the way to choose a *different* Spark:
+
+```commandline
 setx SPARK_HOME "%CONDA_PREFIX%\Lib\site-packages\pyspark"
 ```
 
@@ -79,8 +93,9 @@ any open terminals, and restart the notebook kernel, since `SPARK_HOME` is read 
 
 Note `setx` expands `%CONDA_PREFIX%` at the time you run it, storing the resulting absolute
 path. That pins `SPARK_HOME` to the conda env that was active - if you later `proswap` to a
-different env, re-run the `setx` from that env. `spark_start()` warns when the pyspark it
-can import disagrees with `SPARK_HOME`, rather than failing silently.
+different env, re-run the `setx` from that env. If that env is deleted, `spark_esri` warns
+and falls back on auto-detection. `spark_start()` warns when the pyspark it can import
+disagrees with `SPARK_HOME`, rather than failing silently.
 
 `spark_start()` also prints a warning when it detects the affected Spark/Python combination;
 set `SPARK_ESRI_NO_WARN=1` to silence it or `SPARK_ESRI_STRICT=1` to raise instead.
@@ -92,10 +107,10 @@ set `SPARK_ESRI_NO_WARN=1` to silence it or `SPARK_ESRI_STRICT=1` to raise inste
 If you do not wish to use Pro's built-in Spark, you can override it by setting the
 environment variable `SPARK_HOME`. Three layouts are supported:
 
-- Pro's bundled Spark (the default when `SPARK_HOME` is unset).
-- A pip-installed pyspark - `pip install "pyspark>=4.1.2"`, then
-  `setx SPARK_HOME "%CONDA_PREFIX%\Lib\site-packages\pyspark"`. This is the easiest way to
-  get the SPARK-53759 fix and is the recommended setup on Pro 3.7.
+- Pro's bundled Spark, the default when `SPARK_HOME` is unset and the active env has no pyspark.
+- A pip-installed pyspark: `pip install "pyspark>=4.1.2"`. It is picked up automatically
+  when `SPARK_HOME` is unset. This is the easiest way to get the SPARK-53759 fix and is
+  the recommended setup on Pro 3.7.
 - A downloaded Spark distribution - extract e.g. `spark-4.1.3-bin-hadoop3.tgz` and point
   `SPARK_HOME` at the folder. It's best to avoid spaces in the folder path.
 
@@ -173,8 +188,13 @@ python tests\run_all.py                  ; everything
 python tests\run_all.py t_qr             ; a subset, by substring
 ```
 
-The suite needs a Spark that can run executor-side python, i.e. `SPARK_HOME` pointing at
-Spark >= 4.1.2 - see [the SPARK-53759 section](#known-issue-python-udfs-on-windows-spark-53759).
+The suite needs a Spark that can run executor-side python, i.e. a pip-installed
+`pyspark>=4.1.2` (or 4.0.3+ / 3.5.9+ on those branches) or `SPARK_HOME` pointing at such a Spark - see [the SPARK-53759 section](#known-issue-python-udfs-on-windows-spark-53759).
+
+`t_northsea.py` runs against a real geodatabase, the NorthSea Pro project's `NorthSea.gdb`
+(Wellbores, Pipelines, Discoveries). It is opened read only, and every output goes to the
+`memory` workspace. Point `SPARK_ESRI_NORTHSEA_GDB` at a copy elsewhere. Without one, the
+test reports `SKIP`.
 `run_all.py` echoes the `SPARK_HOME` it resolved, so a run against the wrong Spark is
 obvious from the first line of output.
 
@@ -194,6 +214,12 @@ on a mapped or shared drive:
 
 ```commandline
 pip install <path-to>\grid-hex
+```
+
+Without a clone, pip can install it straight from GitHub (the package is at the repo root):
+
+```commandline
+pip install "gridhex @ git+https://github.com/mraad/grid-hex"
 ```
 
 **`pip install -e` on a mapped/shared drive does not work**, so use the plain install above

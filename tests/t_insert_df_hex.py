@@ -8,9 +8,11 @@ PASS on a file whose other assertions all ran.
 t_insert_cursor.py still checks that insert_df_hex's missing-gridhex guard fires.
 """
 import arcpy
-from pyspark.sql.types import LongType, StructField, StructType
 
-from _harness import check, report, require, start, stop
+from _harness import check, report, require, start, stop  # first: puts python/ on sys.path
+
+import spark_esri  # noqa: F401 - puts Pro's bundled pyspark on sys.path when it is not pip installed
+from pyspark.sql.types import LongType, StructField, StructType
 
 gridhex = require("gridhex", "Install from https://github.com/mraad/grid-hex to enable this test.")
 
