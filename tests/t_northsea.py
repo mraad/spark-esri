@@ -14,11 +14,13 @@ from collections import Counter
 
 import arcpy
 import pandas as pd
+
+from _harness import check, report, skip, start, stop  # first: puts python/ on sys.path
+
+import spark_esri  # noqa: F401 - puts Pro's bundled pyspark on sys.path when it is not pip installed
 from pyspark.sql.functions import pandas_udf
 from pyspark.sql.types import (BinaryType, DoubleType, LongType, StringType, StructField,
                                StructType, TimestampType)
-
-from _harness import check, report, skip, start, stop
 
 import insert_cursor as ic
 

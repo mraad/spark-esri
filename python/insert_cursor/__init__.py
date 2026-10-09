@@ -48,8 +48,11 @@ def _local_rows(df: DataFrame) -> Iterator[tuple]:
     pyspark turns a timestamp into a datetime with datetime.fromtimestamp(), which on Windows
     raises OSError [Errno 22] for any negative epoch - i.e. any date before 1970, common in
     GIS data. So timestamp columns are shipped as wall-clock microseconds since 1970 instead
-    and rebuilt here with timedelta arithmetic, which has no such limit. The wall clock is in
-    the session time zone, which is exactly what fromtimestamp() would have produced.
+    and rebuilt here with timedelta arithmetic, which has no such limit.
+
+    A TimestampType value comes out as its wall clock in spark.sql.session.timeZone, the
+    same as toPandas() and as a DataFrame built from pandas expects on the way in. The row
+    path used the OS time zone instead; the two only differ if the session zone was changed.
     """
     fields = df.schema.fields
     ts = {i for i, f in enumerate(fields) if isinstance(f.dataType, (TimestampType, TimestampNTZType))}

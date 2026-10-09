@@ -12,11 +12,13 @@ import datetime
 import decimal
 
 import arcpy
+
+from _harness import check, report, start, stop  # first: puts python/ on sys.path
+
+import spark_esri  # noqa: F401 - puts Pro's bundled pyspark on sys.path when it is not pip installed
 from pyspark.sql.types import (BinaryType, BooleanType, DateType, DecimalType, DoubleType,
                                FloatType, IntegerType, LongType, StringType, StructField,
                                StructType, TimestampType)
-
-from _harness import check, report, start, stop
 
 import insert_cursor as ic
 

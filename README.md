@@ -188,8 +188,8 @@ python tests\run_all.py                  ; everything
 python tests\run_all.py t_qr             ; a subset, by substring
 ```
 
-The suite needs a Spark that can run executor-side python, i.e. a pip-installed pyspark or
-`SPARK_HOME` pointing at Spark >= 4.1.2 - see [the SPARK-53759 section](#known-issue-python-udfs-on-windows-spark-53759).
+The suite needs a Spark that can run executor-side python, i.e. a pip-installed
+`pyspark>=4.1.2` (or 4.0.3+ / 3.5.9+ on those branches) or `SPARK_HOME` pointing at such a Spark - see [the SPARK-53759 section](#known-issue-python-udfs-on-windows-spark-53759).
 
 `t_northsea.py` runs against a real geodatabase, the NorthSea Pro project's `NorthSea.gdb`
 (Wellbores, Pipelines, Discoveries). It is opened read only, and every output goes to the
