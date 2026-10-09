@@ -72,6 +72,9 @@ try:
     check("_df_to_fields honours an offset of 2",
           [n for n, _ in ic._df_to_fields(typed, 2)],
           ["l", "f", "d", "dec", "date", "ts", "s", "b"])
+    check("_df_to_fields maps timestamp_ntz to DATE",
+          ic._df_to_fields(sql("select 1 shape, timestamp_ntz'2020-01-01 00:00:00' ntz"), 1),
+          [("ntz", "DATE")])
 
     # ---------------------------------------------------------------- insert_df (WKB)
     polys = spark.createDataFrame(
@@ -116,6 +119,21 @@ try:
         coords = sorted((round(r[0], 2), round(r[1], 2), r[2]) for r in cur)
     check("insert_df_xy coordinates round-trip", coords,
           [(0.0, 0.0, "origin"), (100.5, -200.25, "somewhere")])
+
+    # ---------------------------------------------------------------- pre-1970 dates
+    # pyspark's row path uses datetime.fromtimestamp(), which raises OSError [Errno 22] on
+    # Windows for a negative epoch; insert_cursor must ship timestamps around it. Built in
+    # SQL because createDataFrame() from python rows hits the same bug via time.mktime().
+    old = sql("""select 1.0D x, 2.0D y,
+                        timestamp'1965-04-01 13:30:00.25' ts,
+                        timestamp_ntz'1901-12-13 00:00:01' ntz,
+                        timestamp'2024-02-29 23:59:59' recent,
+                        cast(null as timestamp) nothing""")
+    ic.insert_df_xy(old, "TestOldDates", ws="memory", spatial_reference=SR)
+    check("pre-1970 timestamps round-trip",
+          fc_rows("TestOldDates", ["ts", "ntz", "recent", "nothing"]),
+          [(datetime.datetime(1965, 4, 1, 13, 30, 0, 250000), datetime.datetime(1901, 12, 13, 0, 0, 1),
+            datetime.datetime(2024, 2, 29, 23, 59, 59), None)])
 
     # ---------------------------------------------------------------- insert_df_progress
     # Same contract as insert_df, but drives Pro's progress bar and returns the fc path
@@ -180,7 +198,7 @@ try:
         assert "grid-hex" in str(raised), f"guard message should name the package: {raised}"
         print("  ok  insert_df_hex guards on missing gridhex")
 
-    cleanup("TestBins", "TestWkt", "TestPoints", "TestProgress",
+    cleanup("TestBins", "TestWkt", "TestPoints", "TestOldDates", "TestProgress",
             "TestRaw", "TestRows", "TestRawXY", "TestRowsXY")
 finally:
     stop()

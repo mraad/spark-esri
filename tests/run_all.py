@@ -42,7 +42,7 @@ def main(argv):
         [TESTS_DIR, os.path.join(REPO_ROOT, "python"), env.get("PYTHONPATH", "")]
     ).rstrip(os.pathsep)
 
-    print(f"SPARK_HOME = {env.get('SPARK_HOME', '(unset - using the Spark bundled with Pro)')}")
+    print(f"SPARK_HOME = {env.get('SPARK_HOME', '(unset - pip pyspark in this env if any, else the Spark bundled with Pro)')}")
     print(f"rows       = {env.get('SPARK_ESRI_TEST_ROWS', '50000')}\n")
 
     results = []
